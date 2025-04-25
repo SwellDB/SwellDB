@@ -1,0 +1,12 @@
+Your task is to create table that contains the following content:
+{{ content }}
+
+The schema of the table should be the following:
+{{ schema }}
+
+The available tables are the following:
+{{ tables }}
+
+Output Format: A JSON object with the following keys:
+- columns: a list of the columns that can be extracted only using information from the above tables.
+- query: the SQL query required to extract those columns. Add aliases, if needed, to comply with the requested schema.

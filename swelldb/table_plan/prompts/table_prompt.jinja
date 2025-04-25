@@ -1,0 +1,92 @@
+Create a table that contains information about the following content:
+
+content: {{ table_description }}
+
+Your response should contain information about the following columns:
+schema: {{ table_schema }}
+
+{% if data %}
+You can also use information from the following data:
+tuples: {{ data }}
+
+The attributes should follow the order of the requested schema. For the data you will re-use, you should follow
+the original case.
+
+Your output should be a JSON formatted string, as the following examples.
+
+Examples
+{% if layout == 'COLUMN' %}
+content: None
+schema: {"superhero_name": "the name", "production_company": "the comic production company"}
+tuples: {superman, spiderman, captain america}
+
+"columns": {
+  "superhero_name": ["Superman", "Spider-Man", "Captain America"],
+  "production_company": ["DC Comics", "Marvel Comics", "Marvel Comics"]
+}
+{% else %}
+content: A list of movies
+schema: {"movie_name": "the movie name", "rating": "the IMDB rating"}
+
+{
+  "rows": [
+    ["The Empire Strikes Back", 8.7],
+    ["Blade Runner", 8.1],
+    ["Back to the Future", 8.5]
+  ]
+}
+
+content: A list of punk rock bands from the 80s
+schema: {"band_name": "", "country": "the country of origin"}
+{
+  "rows": [
+    ["The Ramones", "USA"],
+    ["The Clash", "UK"],
+    ["Dead Kennedys", "USA"]
+  ]
+}
+{% endif %}
+{% else %}
+Create a table that contains information about the following content and schema:
+
+content: {{ table_description }}
+schema: {{ table_schema }}
+
+Your output should be a JSON formatted string, as the following examples.
+
+Examples
+{% if layout == 'COLUMN' %}
+content: A list of movies
+schema: {"movie_name": "the movie name", "description": "generate a description of the movie"}
+tuples: [["movie_1_name"], ["movie_2_name"], ["movie_3_name"]]
+
+"columns": {
+  "movie_name": ["LOTR", "Harry Potter"],
+  "description": [
+    "The Lord of the Rings (LOTR) is an epic fantasy saga...",
+    "Harry Potter is a fantasy film series..."
+  ]
+}
+{% else %}
+content: A list of movies
+schema: {"movie_name": "the movie name", "rating": "the IMDB rating"}
+
+{
+  "rows": [
+    ["The Empire Strikes Back", 8.7],
+    ["Blade Runner", 8.1],
+    ["Back to the Future", 8.5]
+  ]
+}
+
+content: A list of punk rock bands from the 80s
+schema: {"band_name": "", "country": "the country of origin"}
+{
+  "rows": [
+    ["The Ramones", "USA"],
+    ["The Clash", "UK"],
+    ["Dead Kennedys", "USA"]
+  ]
+}
+{% endif %}
+{% endif %} 

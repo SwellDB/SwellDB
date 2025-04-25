@@ -1,0 +1,16 @@
+Generate a list of search engine queries that you need to construct a table of the following 
+content (or the result of the provided SQL query) and schema: 
+
+content: {{ prompt }}
+sql_query: {{ sql_query }}
+
+schema: {{ schema }}
+
+Your response should contain information about the following data:
+
+data: {{ data }}
+
+The queries should be splittable by a breakline character. Generate a query for each record. If you reuse any of the
+provided data, do not alternate their values. Use the original ones.
+
+Do not include any quotes. Return only the list of the queries and nothing else. 

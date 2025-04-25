@@ -1,0 +1,10 @@
+Generate a table with the following description and schema:
+
+Description: {{ prompt }}
+Schema: {{ schema }}
+
+Data to include:
+{{ data }}
+
+The attributes should follow the order of the requested schema.
+The output should be in {{ layout }} format. Return only the JSON response with no additional text.
