@@ -1,13 +1,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python application](https://github.com/SwellDB/SwellDB/actions/workflows/python-app.yml/badge.svg)](https://github.com/SwellDB/SwellDB/actions/workflows/python-app.yml)
 
-# SwellDB
+ # SwellDB
 
 **Query any data — from LLMs, databases, or the web — using just DataFrames or SQL**
 
----
-
-## 🧠 Overview
+## Overview
 
 **SwellDB** is a new kind of data system that enables SQL-based analytical querying over **dynamically generated tables**. These tables are synthesized in real-time from a combination of sources, including:
 
@@ -25,9 +23,7 @@ This enables bridging structured SQL querying with the flexibility of unstructur
   <p><em>Figure: SwellDB Architecture</em></p>
 </div>
 
----
-
-## 🚀 Key Features
+## Key Features
 
 - **🔄 Dynamic Table Generation**  
   Automatically synthesizes tables on-the-fly from queries and schema prompts — no need for preloaded data.
@@ -57,9 +53,31 @@ This enables bridging structured SQL querying with the flexibility of unstructur
 - **⚡ Seamless Developer Experience**  
   Define tables declaratively using natural language and schema annotations. Then just write SQL.
 
----
+## Use Cases / Examples
 
-## 🧪 Quick Example
+- **Populating relational tables from unstructured sources**  
+  Automatically synthesize structured data from text, documents, or web search results.
+
+- **Ad-hoc querying across hybrid sources**  
+  Seamlessly blend local CSVs, remote databases, LLM completions, and web results into a unified DataFrame. See [example](examples/swelldb_mutations.ipynb).
+
+- **Building virtual data marts on the fly**  
+  Dynamically generate subject-specific datasets without predefining complex ETL pipelines. See [example](examples/swelldb_basic.ipynb).
+
+- **Bootstrapping synthetic datasets**  
+  Instantly generate realistic datasets for testing, prototyping, or training — based on simple schema prompts.
+
+## 🚀 Get Started
+
+### Pre-requisites — Obtain OpenAI and Serper API Keys
+To run the example, you need to obtain API keys for OpenAI and Serper. 
+You can sign up for OpenAI [here](https://platform.openai.com/signup) and for Serper [here](https://serper.dev/). Then
+you can set the API keys as environment variables:
+
+```bash
+export OPENAI_API_KEY=your_openai_api_key
+export SERPER_API_KEY=your_serper_api_key
+```
 
 ```python
 import os
