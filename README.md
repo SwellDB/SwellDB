@@ -53,19 +53,16 @@ This enables bridging structured SQL querying with the flexibility of unstructur
 - **⚡ Seamless Developer Experience**  
   Define tables declaratively using natural language and schema annotations. Then just write SQL.
 
-## Use Cases / Examples
+## Use Cases — Examples
 
-- **Populating relational tables from unstructured sources**  
-  Automatically synthesize structured data from text, documents, or web search results.
+- **Populating relational databases from unstructured sources**  
+  Generate tables for a relational database with DSA interview questions in [SQLite](examples/swell_dsa_questions.ipynb).
 
 - **Ad-hoc querying across hybrid sources**  
   Seamlessly blend local CSVs, remote databases, LLM completions, and web results into a unified DataFrame. See [example](examples/swelldb_mutations.ipynb).
 
-- **Building virtual data marts on the fly**  
+- **Building completely new tables on-the-fly**  
   Dynamically generate subject-specific datasets without predefining complex ETL pipelines. See [example](examples/swelldb_basic.ipynb).
-
-- **Bootstrapping synthetic datasets**  
-  Instantly generate realistic datasets for testing, prototyping, or training — based on simple schema prompts.
 
 ## 🚀 Get Started
 
