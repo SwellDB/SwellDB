@@ -20,8 +20,6 @@ class OpenAILLM(AbstractLLM):
             self.api_key = api_key
         elif os.getenv(Globals.OPENAI_API_KEY):
             self.api_key = os.getenv(Globals.OPENAI_API_KEY)
-        else:
-            self.api_key = ConfigParser.get_config(Globals.OPENAI_API_KEY)
 
         llm = ChatOpenAI(
             api_key=self.api_key,
