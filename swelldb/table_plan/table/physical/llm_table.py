@@ -49,17 +49,16 @@ class LLMTable(PhysicalTable):
         )
         self._env = Environment(loader=FileSystemLoader(prompts_dir))
 
-    def transform(self, partition: pa.RecordBatch) -> str:
-        # Search
+    def get_prompts(self, input_table: pa.Table) -> List[str]:
         logging.info("Generating LLM Table")
 
         data: List = list()
 
-        if partition:
+        if input_table:
             if self._base_columns:
-                data = partition.select(self._base_columns).to_pylist()
+                data = input_table.select(self._base_columns).to_pylist()
             else:
-                data = partition.to_pylist()
+                data = input_table.to_pylist()
 
         schema: SwellDBSchema = self._logical_table.get_schema()
 
@@ -70,7 +69,7 @@ class LLMTable(PhysicalTable):
             layout=self._layout,
         )
 
-        return prompt
+        return [prompt]
 
     @staticmethod
     def get_columns_prompt(logical_table: LogicalTable, tables: Dict[str, str]) -> str:

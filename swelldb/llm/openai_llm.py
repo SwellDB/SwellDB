@@ -13,11 +13,13 @@ from swelldb.util.globals import Globals
 
 
 class OpenAILLM(AbstractLLM):
-    def __init__(self, api_key: str = "", temperature: int = 0) -> None:
+    def __init__(self, api_key: str = None, temperature: int = 0) -> None:
         self.api_key: str = ""
 
         if api_key:
             self.api_key = api_key
+        elif os.getenv(Globals.OPENAI_API_KEY):
+            self.api_key = os.getenv(Globals.OPENAI_API_KEY)
         else:
             self.api_key = ConfigParser.get_config(Globals.OPENAI_API_KEY)
 

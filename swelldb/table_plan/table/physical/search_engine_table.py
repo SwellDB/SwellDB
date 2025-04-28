@@ -68,17 +68,17 @@ class SearchEngineTable(PhysicalTable):
                 Globals.GOOGLE_SERPER_API_KEY
             )
 
-    def transform(self, partition: pa.RecordBatch) -> List[pa.RecordBatch]:
+    def get_prompts(self, input_table: pa.Table) -> List[str]:
         # Search
         logging.info("Searching on the internet")
 
         data: List = list()
 
-        if partition:
+        if input_table:
             if self._base_columns:
-                data = partition.select(self._base_columns).to_pylist()
+                data = input_table.select(self._base_columns).to_pylist()
             else:
-                data = partition.to_pylist()
+                data = input_table.to_pylist()
 
         # Load and render the Jinja template
         template = self._env.get_template("search_engine_prompt.jinja")
@@ -99,11 +99,17 @@ class SearchEngineTable(PhysicalTable):
 
         search_results: str = ""
 
+        links = []
+
         for query in search_queries:
             logging.info(f"Issuing query: {query}")
             results: dict = search.results(query)
             parsed_results: str = str(results["organic"])
             search_results = search_results + "\n" + parsed_results
+
+            for result in results["organic"]:
+                link = result["link"]
+                links.append(link)
 
         prompt: str = create_table_prompt(
             table_description=self._logical_table.get_prompt(),
@@ -114,7 +120,7 @@ class SearchEngineTable(PhysicalTable):
 
         logging.info(f"Table prompt: {prompt}")
 
-        return prompt
+        return [prompt]
 
     @override
     def __str__(self):

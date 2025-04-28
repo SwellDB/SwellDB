@@ -79,28 +79,26 @@ export OPENAI_API_KEY=your_openai_api_key
 export SERPER_API_KEY=your_serper_api_key
 ```
 
+### Create a table
+
 ```python
-import os
+from swelldb import SwellDB
 
-from swelldb import SwellDB, OpenAILLM
+swelldb: SwellDB = SwellDB()
 
-swelldb: SwellDB = SwellDB(
-    llm=OpenAILLM(api_key=os.environ["OPENAI_API_KEY"]), 
-    serper_api_key=os.environ["SERPER_API_KEY"])
+table_builder = swelldb.table_builder()
+table_builder.set_content("A table that contains all the US states")
+table_builder.set_schema("state_name str, region str")
 
-tbl = (
-    swelldb.table_builder()
-    .set_table_name("us_states")
-    .set_content("A table that contains all the US states")
-    .set_schema("state_name str, region str")
-    .set_base_columns(["state_name"])
-).build()
+tbl = table_builder.build()
 
+# Explore the table generation plan
 tbl.explain()
 
+# Create the table
 table = tbl.materialize()
 
-table.to_pandas()[:5]
+print(table.to_pandas())
 ```
 #### Output
 ```
@@ -112,7 +110,7 @@ table.to_pandas()[:5]
 4   California       West
 ```
 
-### Querying with SQL
+### Querying with SQL using DataFusion
 ```python
 import datafusion
 import pyarrow as pa
@@ -120,7 +118,10 @@ import pyarrow as pa
 sc = datafusion.SessionContext()
 sc.register_dataset("us_states", pa.dataset.dataset(table))
 
+# Get 5 states from the South region
 print(sc.sql("SELECT * FROM us_states where region = 'South' LIMIT 5"))
+
+# Count the number of states per region
 print(sc.sql("SELECT COUNT(*), region FROM us_states GROUP BY region"))
 ```
 

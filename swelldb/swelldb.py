@@ -91,9 +91,6 @@ class TableBuilder:
         """
         Build the table using the provided parameters.
         """
-        if self._table_name is None:
-            raise ValueError("Table name must be set.")
-
         if self._content is None:
             raise ValueError("Content must be set.")
 
@@ -129,7 +126,7 @@ class Mode(Enum):
 class SwellDB:
     def __init__(
         self,
-        llm: AbstractLLM,
+        llm: AbstractLLM = OpenAILLM(),
         execution_engine: ExecutionEngine = DataFusionEngine(),
         serper_api_key: str = None,
     ):

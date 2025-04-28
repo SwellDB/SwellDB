@@ -43,7 +43,7 @@ class PhysicalTable:
         self._llm = llm
         self._execution_engine = execution_engine
 
-    def transform(self, partition: pa.Table) -> List[RecordBatch]:
+    def get_prompts(self, input_table: pa.Table) -> List[str]:
         raise NotImplementedError()
 
     def get_operator_name(self) -> str:
@@ -57,8 +57,7 @@ class PhysicalTable:
     def get_child_table(self) -> "PhysicalTable":
         return self._child_table
 
-    def get_partitions(self) -> List[pa.Table]:
-        data: pa.Table = self.materialize()
+    def partition_table(self, data: pa.Table) -> List[pa.Table]:
         num_partitions: int = math.ceil(data.num_rows / self._chunk_size)
         partitions: List[pa.Table] = list()
 
@@ -73,19 +72,14 @@ class PhysicalTable:
     def materialize(self, partitions: int = 1) -> pa.Table:
         final_result: Table = None
 
-        if not self.get_child_table():
-            children_partitions: List[pa.Table] = [None for _ in range(0, partitions)]
-        else:
-            children_partitions: List[pa.Table] = (
-                self.get_child_table().get_partitions()
-            )
+        child_result: Table = self._child_table.materialize(partitions) if self._child_table else None
 
-        n_partitions: int = len(children_partitions)
+        prompts: List[str] = self.get_prompts(child_result)
+        n_prompts: int = len(prompts)
 
-        for idx, partition in enumerate(children_partitions):
-            logging.info("Processing partition {}/{}".format(idx + 1, n_partitions))
+        for idx, prompt in enumerate(prompts):
+            logging.info("Processing prompt {}/{}".format(idx + 1, n_prompts))
 
-            prompt: str = self.transform(partition)
             resp: str = self._llm.call(prompt)
 
             logging.info(f"Issuing LLM call with prompt: {prompt}")
@@ -110,12 +104,15 @@ class PhysicalTable:
                 column_data, schema=self._logical_table.get_schema().to_arrow_schema()
             )
 
-            if partition:
-                result: Table = partition.join(
-                    right_table=output_tbl, keys=self._base_columns, join_type="inner"
+            result = output_tbl
+
+            if child_result:
+                result = result.join(
+                    right_table=child_result,
+                    keys=self._base_columns,
+                    join_type="inner",
                 )
-            else:
-                result = output_tbl
+
 
             if not final_result:
                 final_result = result
@@ -125,69 +122,6 @@ class PhysicalTable:
                 )
 
         return final_result
-
-    async def _materialize_parallel(self) -> pa.Table:
-        children_partitions: List[pa.Table] = self.get_children()[0].get_partitions()
-        n_partitions = len(children_partitions)
-        final_partitions: List[pa.Table] = list()
-
-        def transform_partition(idx, partition: pa.Table) -> pa.Table:
-            logging.info("Processing partition {}/{}".format(idx + 1, n_partitions))
-
-            try:
-                result: pa.Table = self.transform(partition)
-                result_schema: Schema = result.schema
-
-                logical_table_schema = set(self._logical_table.get_schema().keys())
-                result_schema = set(result_schema.names)
-
-                if logical_table_schema != result_schema:
-                    logging.info(
-                        "Different schema: {} != {}".format(
-                            result_schema, logical_table_schema
-                        )
-                    )
-                    return
-
-                final_partitions.append(result)
-                logging.info(
-                    "Finished processing partition {}/{}. Input rows: {}, Output rows: {}".format(
-                        idx + 1, n_partitions, partition.num_rows, result.num_rows
-                    )
-                )
-
-            except Exception as e:
-                logging.info(
-                    "Failed to transform partition {}/{} with error {}".format(
-                        idx + 1, n_partitions, e
-                    )
-                )
-
-        async def working_thread(idx, partition: pa.Table):
-            await asyncio.to_thread(transform_partition, idx, partition)
-
-        tasks = [
-            working_thread(idx, partition)
-            for idx, partition in enumerate(children_partitions)
-        ]
-
-        logging.info("Running tasks")
-
-        await asyncio.gather(*tasks)
-
-        final_partitions = [
-            f_partition.cast(final_partitions[0].schema)
-            for f_partition in final_partitions
-        ]
-
-        result: pa.Table = pa.concat_tables(final_partitions)
-
-        logging.info("Done: {}".format(result.num_rows))
-
-        return result
-
-    def materialize_parallel(self) -> pa.Table:
-        return asyncio.run(self._materialize_parallel())
 
     def explain(self, space="") -> None:
         print("{}{}".format(space, self.__str__()))

@@ -25,5 +25,5 @@ class CustomTable(PhysicalTable):
 
         self.data: Table = data
 
-    def materialize(self) -> Table:
+    def materialize(self, partitions: int = 1) -> Table:
         return self.data
