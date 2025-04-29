@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "swelldb"
+version = "0.1.0"
+description = "Dynamic Query-Driven Table Generation with LLMs"
+authors = [
+  { name="Victor Giannakouris", email="giannakouris.victor@gmail.com" },
+]
+readme = "README.md"
+requires-python = ">=3.10"
+
+[project.urls]
+Homepage = "https://github.com/SwellDB/SwellDB"
+Repository = "https://github.com/SwellDB/SwellDB"
+Issues = "https://github.com/SwellDB/SwellDB/issues"
+
+[tool.setuptools]
+packages = ["swelldb"]
