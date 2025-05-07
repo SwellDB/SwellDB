@@ -1,5 +1,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python application](https://github.com/SwellDB/SwellDB/actions/workflows/python-app.yml/badge.svg)](https://github.com/SwellDB/SwellDB/actions/workflows/python-app.yml)
+<a href="https://pypi.org/project/swelldb" target="_blank">
+    <img src="https://img.shields.io/pypi/v/swelldb?color=%2334D058&label=pypi%20package" alt="Package version">
+</a>
 
  # SwellDB
 
@@ -19,7 +22,7 @@ Unlike traditional systems operating under a closed-world assumption (queries on
 This enables bridging structured SQL querying with the flexibility of unstructured data retrieval.
 
 <div align="center">
-  <img src="images/swelldb_architecture.png" alt="SwellDB Architecture" width="300"/>
+  <img src="https://raw.githubusercontent.com/SwellDB/SwellDB/main/images/swelldb_architecture.png" alt="SwellDB Architecture" width="300"/>
   <p><em>Figure: SwellDB Architecture</em></p>
 </div>
 
@@ -66,14 +69,19 @@ This enables bridging structured SQL querying with the flexibility of unstructur
 
 ## 🚀 Get Started
 
-### Pre-requisites — Obtain OpenAI and Serper API Keys
-To run the example, you need to obtain API keys for OpenAI and Serper. 
-You can sign up for OpenAI [here](https://platform.openai.com/signup) and for Serper [here](https://serper.dev/). Then
+### Install SwellDB
+
+```bash
+pip install swelldb
+```
+
+### Obtain OpenAI API Key
+To run the following example, you need to obtain an API key for OpenAI. 
+You can sign up for OpenAI [here](https://platform.openai.com/signup). Then
 you can set the API keys as environment variables:
 
 ```bash
 export OPENAI_API_KEY=your_openai_api_key
-export SERPER_API_KEY=your_serper_api_key
 ```
 
 ### Create a table
