@@ -1,5 +1,5 @@
 # Copyright (c) 2025 Victor Giannakouris
-# 
+#
 # This file is part of SwellDB and is licensed under the MIT License.
 # See the LICENSE file in the project root for more information.
 
@@ -72,7 +72,9 @@ class PhysicalTable:
     def materialize(self, partitions: int = 1) -> pa.Table:
         final_result: Table = None
 
-        child_result: Table = self._child_table.materialize(partitions) if self._child_table else None
+        child_result: Table = (
+            self._child_table.materialize(partitions) if self._child_table else None
+        )
 
         prompts: List[str] = self.get_prompts(child_result)
         n_prompts: int = len(prompts)
@@ -112,7 +114,6 @@ class PhysicalTable:
                     keys=self._base_columns,
                     join_type="inner",
                 )
-
 
             if not final_result:
                 final_result = result

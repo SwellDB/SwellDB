@@ -1,6 +1,6 @@
-from swelldb import SwellDB
+from swelldb import SwellDB, OpenAILLM
 
-swelldb: SwellDB = SwellDB()
+swelldb: SwellDB = SwellDB(llm=OpenAILLM(model="gpt-4o"))
 
 table_builder = swelldb.table_builder()
 table_builder.set_content("A table that contains all the US states")

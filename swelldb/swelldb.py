@@ -1,9 +1,9 @@
 # Copyright (c) 2025 Victor Giannakouris
-# 
+#
 # This file is part of SwellDB and is licensed under the MIT License.
 # See the LICENSE file in the project root for more information.
 
-from typing import Union, List, Dict, Optional, Any
+from typing import Union, List, Dict
 from enum import Enum
 
 import pyarrow as pa
@@ -126,7 +126,7 @@ class Mode(Enum):
 class SwellDB:
     def __init__(
         self,
-        llm: AbstractLLM = OpenAILLM(),
+        llm: AbstractLLM,
         execution_engine: ExecutionEngine = DataFusionEngine(),
         serper_api_key: str = None,
     ):

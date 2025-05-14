@@ -1,8 +1,8 @@
 # Copyright (c) 2025 Victor Giannakouris
-# 
+#
 # This file is part of SwellDB and is licensed under the MIT License.
 # See the LICENSE file in the project root for more information.
-
+import importlib
 import os
 from typing import List, Dict
 
@@ -71,18 +71,17 @@ class DatasetTable(PhysicalTable):
         # Get the directory of the current file
         current_dir = os.path.dirname(__file__)
 
-        # Construct the relative path to the target file or directory
-        prompt_file_path = os.path.join(
-            current_dir, "../../prompts", f"dataset_table_columns_prompt.jinja"
-        )
-
         tables_str = ""
 
         for tbl in tables:
             tables_str += f"Table name:{tbl}: Schema: {tables[tbl]}\n"
 
         # Read the file and render the template
-        with open(prompt_file_path, "r") as file:
+        with (
+            importlib.resources.files("swelldb.table_plan.prompts")
+            .joinpath("dataset_table_columns_prompt.jinja")
+            .open("r", encoding="utf-8") as file
+        ):
             template = Template(file.read())
             prompt = template.render(
                 content=logical_table.get_prompt(),

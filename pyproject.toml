@@ -11,11 +11,29 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+  "pandas",
+  "pyarrow",
+  "datafusion",
+  "langchain-core",
+  "langchain-community",
+  "langchain-openai",
+  "jinja2",
+  "overrides",
+]
 
 [project.urls]
 Homepage = "https://github.com/SwellDB/SwellDB"
 Repository = "https://github.com/SwellDB/SwellDB"
 Issues = "https://github.com/SwellDB/SwellDB/issues"
 
-[tool.setuptools]
-packages = ["swelldb"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["swelldb*"]
+
+[tool.setuptools.package-data]
+"swelldb" = [
+  "table_plan/prompts/*.jinja",
+  "images/*"
+]
