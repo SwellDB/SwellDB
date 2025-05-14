@@ -128,3 +128,8 @@ class PhysicalTable:
         print("{}{}".format(space, self.__str__()))
         if self._child_table:
             self._child_table.explain(space + "--")
+
+    def __or__(self, other):
+        other._child_table = self
+        return other
+
