@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "swelldb"
-version = "0.1.0"
+version = "0.1.2"
 description = "Dynamic Query-Driven Table Generation with LLMs"
 authors = [
   { name="Victor Giannakouris", email="giannakouris.victor@gmail.com" },
