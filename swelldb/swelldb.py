@@ -29,6 +29,7 @@ class TableBuilder:
         self._schema: Union[SwellDBSchema, str] = None
         self._base_columns: List[str] = None
         self._table_gen_mode: Mode = Mode.LLM
+        self._child_table = None
         self._data: pa.Table = None
         self._operators: List[type] = []
         self._chunk_size = 20
@@ -71,7 +72,21 @@ class TableBuilder:
         return self
 
     def set_data(self, data: pa.Table) -> "TableBuilder":
+        if self._child_table:
+            raise ValueError(
+                "Cannot set data when child table is already set. Please use either data or child_table."
+            )
+
         self._data = data
+        return self
+
+    def set_child_table(self, table: PhysicalTable) -> "TableBuilder":
+        if self._data:
+            raise ValueError(
+                "Cannot set child table when data is already set. Please use either data or child_table."
+            )
+
+        self._child_table = table
         return self
 
     def set_chunk_size(self, chunk_size: int) -> "TableBuilder":
@@ -113,6 +128,7 @@ class TableBuilder:
             mode=self._table_gen_mode,
             tables=tables,
             data=self._data,
+            child_table=self._child_table,
         )
 
 
@@ -121,6 +137,7 @@ class Mode(Enum):
     OPERATORS = "operators"
     LLM = "llm"
     SEARCH = "search"
+    DATASET = "dataset"
 
 
 class SwellDB:
@@ -154,6 +171,7 @@ class SwellDB:
         operators: List[type] = None,
         layout: Layout = Layout.ROW(),
         data: pa.Table = None,
+        child_table: PhysicalTable = None,
         tables: Dict[str, str] = None,
     ) -> PhysicalTable:
         """
@@ -197,10 +215,10 @@ class SwellDB:
         if isinstance(schema, str):
             schema = SwellDBSchema.from_string(schema)
 
+        # Create the logical table
         logical_table = LogicalTable(name=name, prompt=content, schema=schema)
 
-        child_table: PhysicalTable = None
-
+        # If data is provided, create a child table that includes that data
         if data:
             child_table = CustomTable(
                 "data",
@@ -210,10 +228,12 @@ class SwellDB:
                 base_columns=base_columns,
             )
 
+        # Experimental
         if mode == Mode.PLANNER:
             table: PhysicalTable = self._planner.create_plan(
                 logical_table=logical_table, base_columns=base_columns, tables=tables
             )
+        # Experimental
         elif mode == Mode.OPERATORS:
             table: PhysicalTable = self._planner.create_plan_from_operators(
                 logical_table=logical_table,

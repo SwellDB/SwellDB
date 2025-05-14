@@ -27,3 +27,8 @@ class CustomTable(PhysicalTable):
 
     def materialize(self, partitions: int = 1) -> Table:
         return self.data
+
+    def __str__(self):
+        return (
+            f"CustomTable[schema={self.data.column_names}"
+        )
