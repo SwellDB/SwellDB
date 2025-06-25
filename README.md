@@ -22,7 +22,7 @@ Unlike traditional systems operating under a closed-world assumption (queries on
 This enables bridging structured SQL querying with the flexibility of unstructured data retrieval.
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/SwellDB/SwellDB/main/images/swelldb_architecture.png" alt="SwellDB Architecture" width="300"/>
+  <img src="https://raw.githubusercontent.com/SwellDB/SwellDB/main/images/swelldb_logo.png" alt="SwellDB Architecture" width="300"/>
   <p><em>Figure: SwellDB Architecture</em></p>
 </div>
 
@@ -59,7 +59,7 @@ This enables bridging structured SQL querying with the flexibility of unstructur
 ## Use Cases — Examples
 
 - **Populating relational databases from unstructured sources**  
-  Generate tables for a relational database with DSA interview questions in [SQLite](examples/swell_dsa_questions.ipynb).
+  Generate tables for a relational database with DSA interview questions in [SQLite](examples/swelldb_dsa_chain.ipynb).
 
 - **Ad-hoc querying across hybrid sources**  
   Seamlessly blend local CSVs, remote databases, LLM completions, and web results into a unified DataFrame. See [example](examples/swelldb_mutations.ipynb).
