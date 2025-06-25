@@ -4,7 +4,10 @@
     <img src="https://img.shields.io/pypi/v/swelldb?color=%2334D058&label=pypi%20package" alt="Package version">
 </a>
 
- # SwellDB
+<div align="center">
+  <img src="https://raw.githubusercontent.com/SwellDB/SwellDB/main/images/swelldb_logo.png"  width="350"/>
+</div>
+
 
 **Query any data — from LLMs, databases, or the web — using just DataFrames or SQL**
 
@@ -20,11 +23,6 @@
 Unlike traditional systems operating under a closed-world assumption (queries only run on pre-loaded data), **SwellDB generates tables on-demand**, tailored to user-defined prompts and schemas.
 
 This enables bridging structured SQL querying with the flexibility of unstructured data retrieval.
-
-<div align="center">
-  <img src="https://raw.githubusercontent.com/SwellDB/SwellDB/main/images/swelldb_logo.png" alt="SwellDB Architecture" width="300"/>
-  <p><em>Figure: SwellDB Architecture</em></p>
-</div>
 
 ## Key Features
 
@@ -47,9 +45,6 @@ This enables bridging structured SQL querying with the flexibility of unstructur
 - **🧩 Modular & Extensible**  
   Easy to plug in new data sources via a clean Data Source API (structured + unstructured).
 
-- **🧪 Fully SQL-Compatible**  
-  Query generated tables with standard SQL — powered by [Apache DataFusion](https://datafusion.apache.org/).
-
 - **🌍 Open-World Query Execution**  
   Go beyond what’s stored — SwellDB fetches or generates the missing pieces on demand.
 
@@ -66,6 +61,12 @@ This enables bridging structured SQL querying with the flexibility of unstructur
 
 - **Building completely new tables on-the-fly**  
   Dynamically generate subject-specific datasets without predefining complex ETL pipelines. See [example](examples/swelldb_basic.ipynb).
+
+### Generating tables from multiple data sources
+<div align="center">
+  <img src="https://raw.githubusercontent.com/SwellDB/SwellDB/main/images/table_gen_example.png"  width="700"/>
+  <p>Table generation example</p>
+</div>
 
 ## 🚀 Get Started
 
