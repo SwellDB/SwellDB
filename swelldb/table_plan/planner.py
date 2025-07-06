@@ -11,6 +11,7 @@ from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.llm.abstract_llm import AbstractLLM
 from swelldb.table_plan import planner_prompts
 from swelldb.table_plan.swelldb_schema import SwellDBSchema
+from swelldb.table_plan.meta import SwellDBMeta
 
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.dataset_table import DatasetTable
@@ -30,9 +31,8 @@ class TableGenPlanner:
     def create_plan_from_operators(
         self,
         logical_table: LogicalTable,
-        base_columns: List[str],
+        meta: SwellDBMeta,
         tables: Dict[str, str],
-        operators: List[type],
     ):
         # The initial column set, defined by the user
         initial_schema: SwellDBSchema = logical_table.get_schema()
@@ -41,6 +41,9 @@ class TableGenPlanner:
         remaining_column_set: Set[str] = set(initial_schema.get_attribute_names())
 
         root = None
+        operators = meta.get_operators()
+        base_columns = meta.get_base_columns()
+
         while operators and remaining_column_set:
             curr_logical_table_schema = SwellDBSchema(
                 attributes=[
@@ -84,7 +87,7 @@ class TableGenPlanner:
 
             # Replace the root table with the new operator — Add the previous root as its child.
             root = operator_cls(
-                self._execution_engine, new_logical_table, root, base_columns, self._llm
+                self._execution_engine, new_logical_table, root, meta, self._llm
             )
 
             remaining_column_set.difference_update(operator_columns)
