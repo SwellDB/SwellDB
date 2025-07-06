@@ -82,7 +82,6 @@ class SearchEngineTable(PhysicalTable):
         links: List[str] = self._meta.get_links()
 
         if not links:
-            # Load and render the Jinja template
             template = self._env.get_template("search_engine_prompt.jinja")
 
             search_query_prompt = template.render(
@@ -113,6 +112,7 @@ class SearchEngineTable(PhysicalTable):
                     links.append(link)
 
         crawl_pages: bool = False
+
         if crawl_pages:
             clean_results = ""
 
