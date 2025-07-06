@@ -10,17 +10,18 @@ from langchain_community.utilities import GoogleSerperAPIWrapper
 from overrides import override
 from jinja2 import Environment, FileSystemLoader
 
+from swelldb.common.text import Splitter
 from swelldb.llm.abstract_llm import AbstractLLM
 from swelldb.prompt.prompt_utils import create_table_prompt
-from swelldb.table_plan.layout import Layout
+from swelldb.search.utils import crawl
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
 from swelldb.engine.execution_engine import ExecutionEngine
-
-import logging
-
 from swelldb.util.config_parser import ConfigParser
 from swelldb.util.globals import Globals
+from swelldb.table_plan.meta import SwellDBMeta
+
+import logging
 
 
 class SearchEngineTable(PhysicalTable):
@@ -29,10 +30,8 @@ class SearchEngineTable(PhysicalTable):
         execution_engine: ExecutionEngine,
         logical_table: LogicalTable,
         child_table: PhysicalTable,
-        base_columns: List[str],
+        meta: SwellDBMeta,
         llm: AbstractLLM,
-        layout: Layout = Layout.ROW(),
-        serper_api_key: str = None,
     ):
         super().__init__(
             execution_engine=execution_engine,
@@ -40,13 +39,14 @@ class SearchEngineTable(PhysicalTable):
             logical_table=logical_table,
             child_table=child_table,
             operator_name="search_engine_table",
+            layout=meta.get_layout(),
+            base_columns=meta.get_base_columns(),
+            chunk_size=meta.get_chunk_size(),
         )
 
         self._execution_engine = execution_engine
-        self._base_columns = base_columns
+        self._meta = meta
         self._llm = llm
-        self._layout = layout
-        self._serper_api_key = serper_api_key
 
         # Set up Jinja environment
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -58,7 +58,7 @@ class SearchEngineTable(PhysicalTable):
         self._env = Environment(loader=FileSystemLoader(prompts_dir))
 
         # Load config
-
+        serper_api_key = meta.get_serper_api_key()
         if serper_api_key:
             self._serper_api_key = serper_api_key
         elif os.getenv("SERPER_API_KEY"):
@@ -69,7 +69,6 @@ class SearchEngineTable(PhysicalTable):
             )
 
     def get_prompts(self, input_table: pa.Table) -> List[str]:
-        # Search
         logging.info("Searching on the internet")
 
         data: List = list()
@@ -80,47 +79,73 @@ class SearchEngineTable(PhysicalTable):
             else:
                 data = input_table.to_pylist()
 
-        # Load and render the Jinja template
-        template = self._env.get_template("search_engine_prompt.jinja")
-        search_query_prompt = template.render(
-            prompt=self._logical_table.get_prompt(),
-            sql_query=self._logical_table._sql_query,
-            schema=self._logical_table.get_schema().get_attribute_names(),
-            data=data,
-        )
+        links: List[str] = self._meta.get_links()
 
-        search_queries: list[str] = self._llm.call(search_query_prompt).split("\n")
+        if not links:
+            # Load and render the Jinja template
+            template = self._env.get_template("search_engine_prompt.jinja")
 
-        logging.info(f"Search queries: {search_queries}")
+            search_query_prompt = template.render(
+                prompt=self._logical_table.get_prompt(),
+                sql_query=self._logical_table._sql_query,
+                schema=self._logical_table.get_schema().get_attribute_names(),
+                data=data,
+            )
 
-        search: GoogleSerperAPIWrapper = GoogleSerperAPIWrapper(
-            serper_api_key=self._serper_api_key
-        )
+            search_queries: list[str] = self._llm.call(search_query_prompt).split("\n")
 
-        search_results: str = ""
+            logging.info(f"Search queries: {search_queries}")
 
-        links = []
+            search: GoogleSerperAPIWrapper = GoogleSerperAPIWrapper(
+                serper_api_key=self._serper_api_key
+            )
 
-        for query in search_queries:
-            logging.info(f"Issuing query: {query}")
-            results: dict = search.results(query)
-            parsed_results: str = str(results["organic"])
-            search_results = search_results + "\n" + parsed_results
+            search_results: str = ""
 
-            for result in results["organic"]:
-                link = result["link"]
-                links.append(link)
+            for query in search_queries:
+                logging.info(f"Issuing query: {query}")
+                results: dict = search.results(query)
+                parsed_results: str = str(results["organic"])
+                search_results = search_results + "\n" + parsed_results
 
-        prompt: str = create_table_prompt(
-            table_description=self._logical_table.get_prompt(),
-            table_schema=self._logical_table.get_schema().get_attribute_names(),
-            data=f"Original data: {data}\nSearch results: {search_results}",
-            layout=self._layout,
-        )
+                for result in results["organic"]:
+                    link = result["link"]
+                    links.append(link)
+
+        crawl_pages: bool = False
+        if crawl_pages:
+            clean_results = ""
+
+            for link in links:
+                logging.info(f"Crawling link: {link}")
+                content = crawl(link)
+                if content:
+                    clean_results += "\n" + content
+
+            splitter: Splitter = Splitter()
+            prompts = []
+            for chunk in splitter.split(clean_results):
+                prompt: str = create_table_prompt(
+                    table_description=self._logical_table.get_prompt(),
+                    table_schema=self._logical_table.get_schema().get_attribute_names(),
+                    data=f"Original data: {data}\nSearch results: {chunk}",
+                    layout=self._layout,
+                )
+
+                prompts.append(prompt)
+        else:
+            prompt: str = create_table_prompt(
+                table_description=self._logical_table.get_prompt(),
+                table_schema=self._logical_table.get_schema().get_attribute_names(),
+                data=f"Original data: {data}\nSearch results: {search_results}",
+                layout=self._layout,
+            )
+
+            prompts = [prompt]
 
         logging.info(f"Table prompt: {prompt}")
 
-        return [prompt]
+        return prompts
 
     @override
     def __str__(self):
