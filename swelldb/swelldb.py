@@ -4,7 +4,6 @@
 # See the LICENSE file in the project root for more information.
 
 from typing import Union, List, Dict
-from enum import Enum
 
 import pyarrow as pa
 
@@ -12,7 +11,6 @@ from swelldb.engine.datafusion_processor import DataFusionEngine
 from swelldb.table_plan.planner import TableGenPlanner
 from swelldb.table_plan.swelldb_schema import SwellDBSchema
 from swelldb.llm.abstract_llm import AbstractLLM
-from swelldb.table_plan.layout import Layout
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.custom_table import CustomTable
 from swelldb.table_plan.table.physical.llm_table import LLMTable
@@ -20,55 +18,39 @@ from swelldb.table_plan.table.physical.physical_table import PhysicalTable
 from swelldb.table_plan.table.physical.search_engine_table import SearchEngineTable
 from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.llm.openai_llm import OpenAILLM
-
+from swelldb.table_plan.meta import SwellDBMeta
+from swelldb.table_plan.mode import Mode
 
 class TableBuilder:
     def __init__(self, swelldb_ctx: "SwellDB"):
-        self._table_name: str = None
-        self._content: str = None
-        self._schema: Union[SwellDBSchema, str] = None
-        self._base_columns: List[str] = None
-        self._table_gen_mode: Mode = Mode.LLM
+        self._meta: SwellDBMeta = SwellDBMeta()
         self._child_table = None
-        self._data: pa.Table = None
-        self._operators: List[type] = []
-        self._chunk_size = 20
-
         self.swelldb_ctx = swelldb_ctx
         self.csv_files: List[(str, str)] = []
         self.parquet_files: List[(str, str)] = []
 
     def set_table_name(self, name: str) -> "TableBuilder":
-        self._table_name = name
+        self._meta.set_table_name(name)
         return self
 
     def set_content(self, content: str) -> "TableBuilder":
-        self._content = content
+        self._meta.set_content(content)
         return self
 
     def set_schema(self, schema: Union[SwellDBSchema, str]) -> "TableBuilder":
-        self._schema = schema
+        self._meta.set_schema(schema)
         return self
 
     def set_base_columns(self, base_columns: List[str]) -> "TableBuilder":
-        self._base_columns = base_columns
+        self._meta.set_base_columns(base_columns)
         return self
 
     def set_table_gen_mode(self, mode: "Mode") -> "TableBuilder":
-        self._table_gen_mode = mode
+        self._meta.set_table_gen_mode(mode)
         return self
 
-    def set_operators(self, operators: List[type]):
-        op_set = set()
-
-        for operator in operators:
-            if operator in op_set:
-                raise ValueError(
-                    f"Duplicate operator found: {operator}. Each operator should be included only once."
-                )
-            op_set.add(operator)
-
-        self._operators = operators
+    def set_operators(self, operators: List[type]) -> "TableBuilder":
+        self._meta.set_operators(operators)
         return self
 
     def set_data(self, data: pa.Table) -> "TableBuilder":
@@ -76,22 +58,19 @@ class TableBuilder:
             raise ValueError(
                 "Cannot set data when child table is already set. Please use either data or child_table."
             )
-
-        self._data = data
+        self._meta.set_data(data)
         return self
 
     def set_child_table(self, table: PhysicalTable) -> "TableBuilder":
-        if self._data:
+        if self._meta.get_data():
             raise ValueError(
                 "Cannot set child table when data is already set. Please use either data or child_table."
             )
-
         self._child_table = table
         return self
 
     def set_chunk_size(self, chunk_size: int) -> "TableBuilder":
-        self._chunk_size = chunk_size
-
+        self._meta.set_chunk_size(chunk_size)
         return self
 
     def add_csv_file(self, name: str, path: str) -> "TableBuilder":
@@ -102,14 +81,17 @@ class TableBuilder:
         self.parquet_files.append((name, path))
         return self
 
+    def add_link(self, link: str):
+        self._meta.add_link(link)
+
     def build(self):
         """
         Build the table using the provided parameters.
         """
-        if self._content is None:
+        if self._meta.get_content() is None:
             raise ValueError("Content must be set.")
 
-        if self._schema is None:
+        if self._meta.get_schema() is None:
             raise ValueError("Schema must be set.")
 
         for csv_file in self.csv_files:
@@ -119,25 +101,10 @@ class TableBuilder:
         tables = self.swelldb_ctx._execution_engine.get_tables()
 
         return self.swelldb_ctx._create_table(
-            name=self._table_name,
-            content=self._content,
-            schema=self._schema,
-            chunk_size=self._chunk_size,
-            operators=self._operators,
-            base_columns=self._base_columns,
-            mode=self._table_gen_mode,
-            tables=tables,
-            data=self._data,
+            meta=self._meta,
             child_table=self._child_table,
+            tables=tables,
         )
-
-
-class Mode(Enum):
-    PLANNER = "planner"
-    OPERATORS = "operators"
-    LLM = "llm"
-    SEARCH = "search"
-    DATASET = "dataset"
 
 
 class SwellDB:
@@ -162,47 +129,38 @@ class SwellDB:
 
     def _create_table(
         self,
-        name: str,
-        content: str,
-        schema: Union[SwellDBSchema, str],
-        chunk_size: int,
-        base_columns: List[str] = None,
-        mode: Mode = Mode.LLM,
-        operators: List[type] = None,
-        layout: Layout = Layout.ROW(),
-        data: pa.Table = None,
+        meta: SwellDBMeta,
         child_table: PhysicalTable = None,
         tables: Dict[str, str] = None,
     ) -> PhysicalTable:
         """
-        Create a table using the given name, content, schema, layout and data.
+        Create a table using the provided metadata.
 
         Args:
-            name (str): The name of the table.
-            content (str): The content of the table.
-            schema (str): The schema of the table, as a string.
-            base_columns (str): The base column to use for the table. Default is None.
-            mode (Mode): The mode to use for table creation (LLM or SEARCH).
-            layout (Layout): The layout of the table. Default is Layout.ROW().
-            data (pa.Table): The data to be used for the table. Default is None.
+            meta (SwellDBMeta): The metadata for the table.
+            child_table (PhysicalTable): Optional child table. Default is None.
             tables (Dict[str, str]): A dictionary of registered tables to be used for the table generation. Default is None.
 
         Returns:
-            pa.Table: The created table.
+            PhysicalTable: The created table.
 
         Examples:
             >>> from swelldb import SwellDB
             >>> from swelldb.llm.openai_llm import OpenAILLM
+            >>> from swelldb.table_plan.meta import SwellDBMeta
 
             >>> swell_ctx = SwellDB(OpenAILLM())
-            >>> tbl = swell_ctx.create_table(
-            ...     name="country",
-            ...     content="a list of all US states",
-            ...     schema="country_name, president, year",
-            ...     layout=Layout.ROW(),
-            ...     data=None
-            ... )
+            >>> meta = SwellDBMeta()
+            >>> meta.set_table_name("country")
+            >>> meta.set_content("a list of all US states")
+            >>> meta.set_schema("country_name, president, year")
+            >>> tbl = swell_ctx._create_table(meta=meta)
         """
+        mode = meta.get_table_gen_mode()
+        base_columns = meta.get_base_columns()
+        operators = meta.get_operators()
+        schema = meta.get_schema()
+        data = meta.get_data()
 
         if mode == Mode.PLANNER and not base_columns:
             raise ValueError(
@@ -216,49 +174,49 @@ class SwellDB:
             schema = SwellDBSchema.from_string(schema)
 
         # Create the logical table
-        logical_table = LogicalTable(name=name, prompt=content, schema=schema)
+        logical_table = LogicalTable(
+            name=meta.get_table_name(),
+            prompt=meta.get_content(),
+            schema=schema
+        )
 
         # If data is provided, create a child table that includes that data
         if data:
             child_table = CustomTable(
                 "data",
-                data=data,
-                chunk_size=chunk_size,
-                layout=layout,
-                base_columns=base_columns,
+                meta=meta,
+                child_table=child_table,
             )
 
         # Experimental
         if mode == Mode.PLANNER:
             table: PhysicalTable = self._planner.create_plan(
-                logical_table=logical_table, base_columns=base_columns, tables=tables
+                logical_table=logical_table,
+                base_columns=base_columns,
+                tables=tables
             )
         # Experimental
         elif mode == Mode.OPERATORS:
             table: PhysicalTable = self._planner.create_plan_from_operators(
                 logical_table=logical_table,
-                base_columns=base_columns,
+                meta=meta,
                 tables=tables,
-                operators=operators,
             )
         elif mode == Mode.LLM:
             table: PhysicalTable = LLMTable(
                 logical_table=logical_table,
                 child_table=child_table,
-                base_columns=base_columns,
-                execution_engine=self._execution_engine,
+                meta=meta,
                 llm=self._llm,
-                layout=layout,
+                execution_engine=self._execution_engine,
             )
         elif mode == Mode.SEARCH:
             table: PhysicalTable = SearchEngineTable(
                 logical_table=logical_table,
                 child_table=child_table,
-                base_columns=base_columns,
-                execution_engine=self._execution_engine,
+                meta=meta,
                 llm=self._llm,
-                layout=layout,
-                serper_api_key=self._serper_api_key,
+                execution_engine=self._execution_engine,
             )
         else:
             raise ValueError(f"Unknown mode: {mode}")
