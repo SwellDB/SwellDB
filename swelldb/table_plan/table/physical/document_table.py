@@ -5,16 +5,20 @@
 
 import os
 from typing import List, Dict
+import logging
 
 from jinja2 import Template
 from overrides import override, overrides
-from pyarrow import Table
+import pyarrow as pa
 
 from swelldb.llm.abstract_llm import AbstractLLM
-from swelldb.table_plan.layout import Layout
+from swelldb.table_plan.meta import SwellDBMeta
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
 from swelldb.engine.execution_engine import ExecutionEngine
+from swelldb.common.document_loader import DocumentLoader
+from swelldb.common.text import Splitter
+from swelldb.prompt.prompt_utils import create_table_prompt
 
 
 class DocumentTable(PhysicalTable):
@@ -23,49 +27,67 @@ class DocumentTable(PhysicalTable):
         execution_engine: ExecutionEngine,
         logical_table: LogicalTable,
         child_table: PhysicalTable,
-        base_columns: List[str],
+        meta: SwellDBMeta,
         llm: AbstractLLM,
-        layout: Layout = Layout.ROW(),
     ):
         super().__init__(
             logical_table=logical_table,
             child_table=child_table,
-            layout=layout,
+            layout=meta.get_layout(),
             operator_name="document_table",
             llm=llm,
-            base_columns=base_columns,
+            base_columns=meta.get_base_columns(),
             execution_engine=execution_engine,
+            chunk_size=meta.get_chunk_size(),
         )
 
         self._execution_engine = execution_engine
+        self._meta = meta
+        self._document_loader = DocumentLoader()
+        self._splitter = Splitter()
 
-    @override
-    def materialize(self, partitions=1) -> Table:
-        tables = self._execution_engine.get_tables()
-
-        if self._query:
-            sql_query = self._query
-        else:
-            sql_query = (
-                self._llm.call(
-                    f"""
-            You have access to the following table schemas:
-            f{tables}
-            
-            Generate a SQL query to extract the data from the tables. Your target schema is the following:
-            {self._logical_table.get_schema().get_attribute_names()}
-            
-            Use aliases if needed. Return only the SQL query as a python-compatibel text format.
-            """
-                )
-                .replace("sql", "")
-                .replace("```", "")
+    def get_prompts(self, input_table: pa.Table) -> List[str]:
+        """Generate prompts from document content and input data."""
+        logging.info("Processing documents for DocumentTable")
+        
+        # Get document paths from meta or links
+        document_paths = self._meta.get_links() if self._meta.get_links() else []
+        
+        if not document_paths:
+            logging.warning("No document paths provided in meta.links")
+            return []
+        
+        all_document_text = ""
+        for doc_path in document_paths:
+            try:
+                doc_text = self._document_loader.load_document(doc_path)
+                all_document_text += f"\n\n--- Document: {doc_path} ---\n{doc_text}"
+            except Exception as e:
+                logging.error(f"Failed to load document {doc_path}: {e}")
+                continue
+        
+        if not all_document_text:
+            logging.warning("No document content extracted")
+            return []
+        
+        # Split document into chunks if it's too large
+        text_chunks = self._splitter.split(all_document_text)
+        
+        prompts = []
+        for chunk in text_chunks:
+            prompt = create_table_prompt(
+                table_description=self._logical_table.get_prompt(),
+                table_schema=self._logical_table.get_schema().get_attribute_names(),
+                data=f"Document content:\n{chunk}",
+                layout=self._layout,
             )
+            prompts.append(prompt)
+        
+        return prompts
 
-        return self._execution_engine.sql(sql_query).to_arrow_table()
-
-    @overrides
+    @staticmethod 
     def get_columns_prompt(logical_table: LogicalTable, tables: Dict[str, str]) -> str:
+        """Generate prompt for column planning (used by planner)."""
         # Get the directory of the current file
         current_dir = os.path.dirname(__file__)
 
@@ -92,4 +114,4 @@ class DocumentTable(PhysicalTable):
 
     @override
     def __str__(self):
-        return f'DatasetTable[schema={self._logical_table.get_schema().get_attribute_names()}"]'
+        return f'DocumentTable[schema={self._logical_table.get_schema().get_attribute_names()}"]'
