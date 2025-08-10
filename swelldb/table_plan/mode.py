@@ -12,4 +12,5 @@ class Mode(Enum):
     LLM = "llm"
     SEARCH = "search"
     DATASET = "dataset"
-    DOCUMENT = "document" 
+    DOCUMENT = "document"
+    IMAGE = "image" 

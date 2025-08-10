@@ -16,10 +16,12 @@ from swelldb.table_plan.table.physical.custom_table import CustomTable
 from swelldb.table_plan.table.physical.llm_table import LLMTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
 from swelldb.table_plan.table.physical.search_engine_table import SearchEngineTable
+from swelldb.table_plan.table.physical.image_table import ImageTable
 from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.llm.openai_llm import OpenAILLM
 from swelldb.table_plan.meta import SwellDBMeta
 from swelldb.table_plan.mode import Mode
+from swelldb.util.config import Config
 
 class TableBuilder:
     def __init__(self, swelldb_ctx: "SwellDB"):
@@ -81,8 +83,9 @@ class TableBuilder:
         self.parquet_files.append((name, path))
         return self
 
-    def add_link(self, link: str):
-        self._meta.add_link(link)
+    def add_images(self, image_path: str):
+        self._meta.add_image(image_path)
+        return self
 
     def build(self):
         """
@@ -116,9 +119,13 @@ class SwellDB:
     ):
         self._execution_engine = execution_engine
         self._llm = llm
-        self._serper_api_key = serper_api_key
+        
+        # Load config and use environment variables as override
+        self._config = Config()
+        self._serper_api_key = serper_api_key or self._config.get_serper_api_key()
+        
         self._planner = TableGenPlanner(
-            llm=llm, execution_engine=execution_engine, serper_api_key=serper_api_key
+            llm=llm, execution_engine=execution_engine, serper_api_key=self._serper_api_key
         )
 
     def table_builder(self) -> TableBuilder:
@@ -170,6 +177,9 @@ class SwellDB:
         if mode == Mode.OPERATORS and not operators:
             raise ValueError("A list of operators should provider in operators mode.")
 
+        if mode == Mode.IMAGE and not meta.get_images():
+            raise ValueError("Image paths must be specified in image mode. Use add_images() to add image paths.")
+
         if isinstance(schema, str):
             schema = SwellDBSchema.from_string(schema)
 
@@ -212,6 +222,14 @@ class SwellDB:
             )
         elif mode == Mode.SEARCH:
             table: PhysicalTable = SearchEngineTable(
+                logical_table=logical_table,
+                child_table=child_table,
+                meta=meta,
+                llm=self._llm,
+                execution_engine=self._execution_engine,
+            )
+        elif mode == Mode.IMAGE:
+            table: PhysicalTable = ImageTable(
                 logical_table=logical_table,
                 child_table=child_table,
                 meta=meta,

@@ -12,7 +12,6 @@ from typing import List, Dict
 
 import pyarrow as pa
 from pyarrow import Table
-from pyarrow.lib import Schema, RecordBatch
 
 from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.llm.abstract_llm import AbstractLLM
@@ -125,7 +124,7 @@ class PhysicalTable:
         return final_result
 
     def explain(self, space="") -> None:
-        print("{}{}".format(space, self.__str__()))
+        logging.info("{}{}".format(space, self.__str__()))
         if self._child_table:
             self._child_table.explain(space + "--")
 

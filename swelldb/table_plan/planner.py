@@ -4,8 +4,9 @@
 # See the LICENSE file in the project root for more information.
 
 import json
+import logging
 
-from typing import List, Set, Dict, Union
+from typing import List, Set, Dict
 
 from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.llm.abstract_llm import AbstractLLM
@@ -168,7 +169,7 @@ class TableGenPlanner:
                 planner_prompts.get_llm_columns_prompt(tmp_logical_table)
             )
 
-            print(f"LLM columns: {llm_columns}")
+            logging.info(f"LLM columns: {llm_columns}")
 
             if llm_columns:
                 llm_columns_list: Set[str] = set(
