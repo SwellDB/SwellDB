@@ -14,6 +14,7 @@ from swelldb.table_plan.mode import Mode
 class SwellDBMeta:
     def __init__(self):
         self._links: List[str] = []
+        self._images: List[str] = []
         self._data: pa.Table = None
         self._base_columns: List[str] = None
         self._schema: Union[SwellDBSchema, str] = None
@@ -25,9 +26,12 @@ class SwellDBMeta:
         self._layout: Layout = Layout.ROW()
         self._serper_api_key: str = None
 
-    # Setters
     def set_links(self, links: List[str]) -> "SwellDBMeta":
         self._links = links
+        return self
+
+    def set_images(self, images: List[str]) -> "SwellDBMeta":
+        self._images = images
         return self
 
     def set_data(self, data: pa.Table) -> "SwellDBMeta":
@@ -81,6 +85,9 @@ class SwellDBMeta:
     def get_links(self) -> List[str]:
         return self._links
 
+    def get_images(self) -> List[str]:
+        return self._images
+
     def get_data(self) -> pa.Table:
         return self._data
 
@@ -114,4 +121,9 @@ class SwellDBMeta:
     def add_link(self, link: str) -> "SwellDBMeta":
         if link not in self._links:
             self._links.append(link)
+        return self
+
+    def add_image(self, image_path: str) -> "SwellDBMeta":
+        if image_path not in self._images:
+            self._images.append(image_path)
         return self

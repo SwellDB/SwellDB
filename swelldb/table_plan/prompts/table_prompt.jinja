@@ -2,7 +2,7 @@ Create a table that contains information about the following content:
 
 content: {{ table_description }}
 
-Your response should contain information about the following columns:
+Your response should be in JSON format, and contain information about the following columns:
 schema: {{ table_schema }}
 
 {% if data %}
@@ -12,7 +12,7 @@ tuples: {{ data }}
 The attributes should follow the order of the requested schema. For the data you will re-use, you should follow
 the original case.
 
-Your output should be a JSON formatted string, as the following examples.
+The output should be a JSON formatted string, as the following examples.
 
 Examples
 {% if layout == 'COLUMN' %}
@@ -89,4 +89,6 @@ schema: {"band_name": "", "country": "the country of origin"}
   ]
 }
 {% endif %}
-{% endif %} 
+{% endif %}
+
+Return only the JSON response and no additional text.

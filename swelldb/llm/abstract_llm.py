@@ -8,6 +8,11 @@ import json
 from langchain_core.language_models import BaseChatModel
 
 
+def _contains_image_data(prompt: str) -> bool:
+    """Check if the prompt contains base64 image data."""
+    return "data:image/" in prompt and "base64," in prompt
+
+
 class AbstractLLM:
     def __init__(self, llm: BaseChatModel):
         self.llm: BaseChatModel = llm
@@ -17,6 +22,11 @@ class AbstractLLM:
         self.output_tokens = 0
 
     def call(self, prompt: str) -> str:
+        # Check if this is a multimodal prompt with image data
+        if _contains_image_data(prompt):
+            return self._call_multimodal(prompt)
+        
+        # Regular text-only prompt
         r = self.llm.invoke(prompt)
         stats = r.usage_metadata
 
@@ -36,20 +46,6 @@ class AbstractLLM:
 
         return r
 
-    def needs_search(self, content: str) -> bool:
-        # Ask if further information is needed
-        ask_prompt: str = f"""\
-        I need to construct a table that contains information about the following content:
-
-        content: {content}
-
-        Your response should be up-to-date. Does your data suffice to do that?
-        
-        If no, respond 0. If yes, respond 1.
-        """
-
-        ans: str = self.llm(ask_prompt).content
-
-        needs_search: bool = int(ans) == 0
-
-        return needs_search
+    def _call_multimodal(self, prompt: str) -> str:
+        """Handle multimodal prompts with images. Override in subclasses."""
+        raise NotImplementedError("Multimodal prompts not supported by this LLM implementation")
