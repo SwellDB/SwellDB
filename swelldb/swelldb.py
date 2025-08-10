@@ -20,6 +20,7 @@ from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.llm.openai_llm import OpenAILLM
 from swelldb.table_plan.meta import SwellDBMeta
 from swelldb.table_plan.mode import Mode
+from swelldb.util.config import Config
 
 class TableBuilder:
     def __init__(self, swelldb_ctx: "SwellDB"):
@@ -116,9 +117,13 @@ class SwellDB:
     ):
         self._execution_engine = execution_engine
         self._llm = llm
-        self._serper_api_key = serper_api_key
+        
+        # Load config and use environment variables as override
+        self._config = Config()
+        self._serper_api_key = serper_api_key or self._config.get_serper_api_key()
+        
         self._planner = TableGenPlanner(
-            llm=llm, execution_engine=execution_engine, serper_api_key=serper_api_key
+            llm=llm, execution_engine=execution_engine, serper_api_key=self._serper_api_key
         )
 
     def table_builder(self) -> TableBuilder:

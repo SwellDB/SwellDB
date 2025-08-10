@@ -10,6 +10,7 @@ from langchain_openai import ChatOpenAI
 from swelldb.llm.abstract_llm import AbstractLLM
 from swelldb.util.config_parser import ConfigParser
 from swelldb.util.globals import Globals
+from swelldb.util.config import Config
 
 
 class OpenAILLM(AbstractLLM):
@@ -20,6 +21,10 @@ class OpenAILLM(AbstractLLM):
             self.api_key = api_key
         elif os.getenv(Globals.OPENAI_API_KEY):
             self.api_key = os.getenv(Globals.OPENAI_API_KEY)
+        else:
+            # Try config file as fallback
+            config = Config()
+            self.api_key = config.get_openai_api_key() or ""
 
         llm = ChatOpenAI(
             api_key=self.api_key,
