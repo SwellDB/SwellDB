@@ -21,6 +21,9 @@ dependencies = [
   "langchain-openai",
   "jinja2",
   "overrides",
+  "pypdf2",
+  "pdfplumber",
+  "python-docx",
 ]
 
 [project.urls]

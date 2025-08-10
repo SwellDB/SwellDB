@@ -11,4 +11,5 @@ class Mode(Enum):
     OPERATORS = "operators"
     LLM = "llm"
     SEARCH = "search"
-    DATASET = "dataset" 
+    DATASET = "dataset"
+    DOCUMENT = "document" 
