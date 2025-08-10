@@ -9,7 +9,7 @@
 </div>
 
 
-**Query any data — from LLMs, databases, or the web — using just DataFrames or SQL**
+**Query any data. From LLMs, databases, or the web, using just DataFrames or SQL**
 
 ## Overview
 
@@ -27,7 +27,7 @@ This enables bridging structured SQL querying with the flexibility of unstructur
 ## Key Features
 
 - **🔄 Dynamic Table Generation**  
-  Automatically synthesizes tables on-the-fly from queries and schema prompts — no need for preloaded data.
+  Automatically synthesizes tables on-the-fly from queries and schema prompts. No need for preloaded data.
 
 - **🌐 Multi-Source Integration**  
   Combines data from:
