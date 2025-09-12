@@ -8,13 +8,26 @@ import os
 from langchain_openai.chat_models.base import BaseChatOpenAI
 from langchain_core.messages import HumanMessage
 from swelldb.llm.abstract_llm import AbstractLLM
+from swelldb.util.globals import Globals
+from swelldb.util.config import Config
 
 
 class DeepseekOnlineLLM(AbstractLLM):
-    def __init__(self, model="deepseek-chat"):
+    def __init__(self, model="deepseek-chat", api_key: str = None):
+        self.api_key: str = ""
+        
+        if api_key:
+            self.api_key = api_key
+        elif os.getenv(Globals.DEEPSEEK_API_KEY):
+            self.api_key = os.getenv(Globals.DEEPSEEK_API_KEY)
+        else:
+            # Try config file as fallback
+            config = Config()
+            self.api_key = config.get_deepseek_api_key() or ""
+        
         llm = BaseChatOpenAI(
             model=model,
-            openai_api_key=os.getenv("DEEPSEEK_API_KEY"),
+            openai_api_key=self.api_key,
             openai_api_base="https://api.deepseek.com",
             max_tokens=1024,
         )

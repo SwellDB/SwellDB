@@ -17,6 +17,7 @@ from swelldb.table_plan.table.physical.llm_table import LLMTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
 from swelldb.table_plan.table.physical.search_engine_table import SearchEngineTable
 from swelldb.table_plan.table.physical.image_table import ImageTable
+from swelldb.table_plan.table.physical.document_table import DocumentTable
 from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.llm.openai_llm import OpenAILLM
 from swelldb.table_plan.meta import SwellDBMeta
@@ -85,6 +86,11 @@ class TableBuilder:
 
     def add_images(self, image_path: str):
         self._meta.add_image(image_path)
+        return self
+
+    def add_documents(self, document_path: str):
+        """Add a document path to the metadata."""
+        self._meta.add_document(document_path)
         return self
 
     def build(self):
@@ -180,6 +186,9 @@ class SwellDB:
         if mode == Mode.IMAGE and not meta.get_images():
             raise ValueError("Image paths must be specified in image mode. Use add_images() to add image paths.")
 
+        if mode == Mode.DOCUMENT and not meta.get_documents():
+            raise ValueError("Document paths must be specified in document mode. Use add_documents() to add document paths.")
+
         if isinstance(schema, str):
             schema = SwellDBSchema.from_string(schema)
 
@@ -230,6 +239,14 @@ class SwellDB:
             )
         elif mode == Mode.IMAGE:
             table: PhysicalTable = ImageTable(
+                logical_table=logical_table,
+                child_table=child_table,
+                meta=meta,
+                llm=self._llm,
+                execution_engine=self._execution_engine,
+            )
+        elif mode == Mode.DOCUMENT:
+            table: PhysicalTable = DocumentTable(
                 logical_table=logical_table,
                 child_table=child_table,
                 meta=meta,

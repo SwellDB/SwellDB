@@ -12,3 +12,4 @@ class Globals:
     # Global variables
     OPENAI_API_KEY: str = "openai_api_key"
     GOOGLE_SERPER_API_KEY: str = "serper_api_key"
+    DEEPSEEK_API_KEY: str = "deepseek_api_key"

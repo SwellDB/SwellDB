@@ -56,6 +56,89 @@ class PhysicalTable:
     def get_child_table(self) -> "PhysicalTable":
         return self._child_table
 
+    def _parse_llm_response(self, resp: str, layout: Layout) -> Dict:
+        """
+        Robustly parse LLM response and extract data.
+        
+        Args:
+            resp: The LLM response string
+            layout: The expected layout (COLUMN or ROW)
+            
+        Returns:
+            Dictionary with column data
+            
+        Raises:
+            ValueError: If response cannot be parsed
+        """
+        try:
+            # First, try to parse as JSON
+            parsed = json.loads(resp)
+            logging.debug(f"Successfully parsed JSON response with keys: {list(parsed.keys()) if isinstance(parsed, dict) else 'Not a dict'}")
+            
+            if layout == Layout.COLUMN():
+                if "columns" in parsed and isinstance(parsed["columns"], dict):
+                    # Validate column data structure
+                    columns = parsed["columns"]
+                    if not columns:
+                        logging.warning("Empty columns data in response")
+                        return {}
+                    
+                    # Ensure all values are lists
+                    for col_name, values in columns.items():
+                        if not isinstance(values, list):
+                            logging.warning(f"Column {col_name} is not a list: {type(values)}")
+                            columns[col_name] = [str(values)] if values is not None else [""]
+                    
+                    return columns
+                else:
+                    logging.warning("Response missing 'columns' key or invalid format")
+                    raise ValueError("Invalid column format in response")
+                    
+            elif layout == Layout.ROW():
+                if "rows" in parsed and isinstance(parsed["rows"], list):
+                    row_data = parsed["rows"]
+                    logging.debug(f"Processing {len(row_data)} rows from response")
+                    column_data = defaultdict(list)
+                    
+                    for row in row_data:
+                        if isinstance(row, list):
+                            for idx, attr in enumerate(
+                                self._logical_table.get_schema().get_attributes()
+                            ):
+                                if idx < len(row):
+                                    # Handle None values and convert to string
+                                    value = row[idx]
+                                    if value is None:
+                                        value = ""
+                                    elif not isinstance(value, str):
+                                        value = value
+                                    column_data[attr.get_name()].append(value)
+                                else:
+                                    # Fill missing values with empty string
+                                    column_data[attr.get_name()].append("")
+                        else:
+                            logging.warning(f"Invalid row format: {row}, expected list but got {type(row)}")
+                            continue
+                    
+                    return dict(column_data)
+                else:
+                    logging.warning("Response missing 'rows' key or invalid format")
+                    raise ValueError("Invalid row format in response")
+            else:
+                raise ValueError(f"Unsupported layout: {layout}")
+                
+        except json.JSONDecodeError as e:
+            logging.warning(f"Failed to parse JSON response: {e}")
+            logging.warning(f"Raw response: {resp[:200]}...")
+            raise ValueError(f"Response is not valid JSON: {e}")
+        except KeyError as e:
+            logging.warning(f"Missing required key in response: {e}")
+            logging.warning(f"Available keys: {list(parsed.keys()) if isinstance(parsed, dict) else 'Not a dict'}")
+            raise ValueError(f"Missing required key: {e}")
+        except Exception as e:
+            logging.error(f"Unexpected error parsing response: {e}")
+            raise ValueError(f"Failed to parse response: {e}")
+
     def partition_table(self, data: pa.Table) -> List[pa.Table]:
         num_partitions: int = math.ceil(data.num_rows / self._chunk_size)
         partitions: List[pa.Table] = list()
@@ -86,24 +169,50 @@ class PhysicalTable:
             logging.info(f"Issuing LLM call with prompt: {prompt}")
             logging.info(f"Response: {resp}")
 
-            # TODO: Create a method for that
-            if self._layout == Layout.COLUMN():
-                column_data: Dict = json.loads(resp)["columns"]
-            elif self._layout == Layout.ROW():
-                row_data: Dict = json.loads(resp)["rows"]
-                column_data = defaultdict(list)
-                for row in row_data:
-                    for idx, attr in enumerate(
-                        self._logical_table.get_schema().get_attributes()
-                    ):
-                        column_data[attr.get_name()].append(row[idx])
+            try:
+                # Use robust parsing method
+                column_data = self._parse_llm_response(resp, self._layout)
+            except ValueError as e:
+                logging.error(f"Failed to parse LLM response: {e}")
+                logging.warning(f"Skipping prompt {idx + 1} due to parsing error")
+                continue
 
-            # TODO Add sanity checks for the data schema
+            # Validate column data before creating table
+            if not column_data:
+                logging.warning(f"No valid column data extracted from prompt {idx + 1}")
+                continue
+                
+            # Ensure all required columns are present
+            required_columns = [attr.get_name() for attr in self._logical_table.get_schema().get_attributes()]
+            missing_columns = [col for col in required_columns if col not in column_data]
+            
+            if missing_columns:
+                logging.warning(f"Missing columns in response: {missing_columns}")
+                # Fill missing columns with empty values
+                max_length = max(len(v) for v in column_data.values()) if column_data else 0
+                for col in missing_columns:
+                    column_data[col] = [""] * max_length
+            
+            # Ensure all columns have consistent lengths
+            if column_data:
+                lengths = [len(v) for v in column_data.values()]
+                if len(set(lengths)) > 1:
+                    logging.warning(f"Inconsistent column lengths: {lengths}")
+                    max_length = max(lengths)
+                    # Pad shorter columns with empty strings
+                    for col, values in column_data.items():
+                        if len(values) < max_length:
+                            column_data[col].extend([""] * (max_length - len(values)))
 
             # Cast the output to the correct schema
-            output_tbl: pa.Table = pa.table(
-                column_data, schema=self._logical_table.get_schema().to_arrow_schema()
-            )
+            try:
+                output_tbl: pa.Table = pa.table(
+                    column_data, schema=self._logical_table.get_schema().to_arrow_schema()
+                )
+            except Exception as e:
+                logging.error(f"Failed to create PyArrow table: {e}")
+                logging.warning(f"Skipping prompt {idx + 1} due to table creation error")
+                continue
 
             result = output_tbl
 
@@ -121,10 +230,17 @@ class PhysicalTable:
                     [final_result, result.cast(final_result.schema)]
                 )
 
+        # Handle case where no prompts succeeded
+        if final_result is None:
+            logging.warning("No prompts were successfully processed, returning empty table")
+            # Create empty table with correct schema
+            empty_data = {attr.get_name(): [] for attr in self._logical_table.get_schema().get_attributes()}
+            final_result = pa.table(empty_data, schema=self._logical_table.get_schema().to_arrow_schema())
+
         return final_result
 
     def explain(self, space="") -> None:
-        logging.info("{}{}".format(space, self.__str__()))
+        print("{}{}".format(space, self.__str__()))
         if self._child_table:
             self._child_table.explain(space + "--")
 

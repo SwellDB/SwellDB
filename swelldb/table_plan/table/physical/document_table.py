@@ -4,6 +4,7 @@
 # See the LICENSE file in the project root for more information.
 
 import os
+import glob
 from typing import List, Dict
 import logging
 
@@ -50,20 +51,35 @@ class DocumentTable(PhysicalTable):
         """Generate prompts from document content and input data."""
         logging.info("Processing documents for DocumentTable")
         
-        # Get document paths from meta or links
-        document_paths = self._meta.get_links() if self._meta.get_links() else []
+        # Get document paths from meta.documents
+        document_paths = self._meta.get_documents()
         
         if not document_paths:
-            logging.warning("No document paths provided in meta.links")
+            logging.warning("No document paths provided in meta.documents")
             return []
         
         all_document_text = ""
         for doc_path in document_paths:
             try:
-                doc_text = self._document_loader.load_document(doc_path)
-                all_document_text += f"\n\n--- Document: {doc_path} ---\n{doc_text}"
+                # Check if it's a directory and expand it
+                if os.path.isdir(doc_path):
+                    # Find all document files in the directory
+                    doc_extensions = ['*.pdf', '*.docx', '*.doc', '*.txt', '*.rtf']
+                    for ext in doc_extensions:
+                        doc_files = glob.glob(os.path.join(doc_path, ext))
+                        for doc_file in doc_files:
+                            try:
+                                doc_text = self._document_loader.load_document(doc_file)
+                                all_document_text += f"\n\n--- Document: {doc_file} ---\n{doc_text}"
+                            except Exception as e:
+                                logging.error(f"Failed to load document {doc_file}: {e}")
+                                continue
+                else:
+                    # Single file
+                    doc_text = self._document_loader.load_document(doc_path)
+                    all_document_text += f"\n\n--- Document: {doc_path} ---\n{doc_text}"
             except Exception as e:
-                logging.error(f"Failed to load document {doc_path}: {e}")
+                logging.error(f"Failed to process document path {doc_path}: {e}")
                 continue
         
         if not all_document_text:
