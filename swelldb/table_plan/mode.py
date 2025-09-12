@@ -13,4 +13,5 @@ class Mode(Enum):
     SEARCH = "search"
     DATASET = "dataset"
     DOCUMENT = "document"
-    IMAGE = "image" 
+    IMAGE = "image"
+    RAWTEXT = "rawtext" 

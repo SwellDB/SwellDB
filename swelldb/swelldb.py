@@ -18,7 +18,6 @@ from swelldb.table_plan.table.physical.physical_table import PhysicalTable
 from swelldb.table_plan.table.physical.search_engine_table import SearchEngineTable
 from swelldb.table_plan.table.physical.image_table import ImageTable
 from swelldb.table_plan.table.physical.document_table import DocumentTable
-from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.llm.openai_llm import OpenAILLM
 from swelldb.table_plan.meta import TableConfig
 from swelldb.table_plan.mode import Mode
@@ -91,6 +90,10 @@ class TableBuilder:
     def add_documents(self, document_path: str):
         """Add a document path to the metadata."""
         self._meta.add_document(document_path)
+
+    def add_text_files(self, text_file_path: str):
+        """Add a text file path to the metadata."""
+        self._config.add_text_file(text_file_path)
         return self
 
     def build(self):
@@ -120,10 +123,8 @@ class SwellDB:
     def __init__(
         self,
         llm: AbstractLLM,
-        execution_engine: ExecutionEngine = DataFusionEngine(),
         serper_api_key: str = None,
     ):
-        self._execution_engine = execution_engine
         self._llm = llm
         
         # Load config and use environment variables as override
@@ -186,8 +187,8 @@ class SwellDB:
         if mode == Mode.OPERATORS and not operators:
             raise ValueError("A list of operators should provider in operators mode.")
 
-        if mode == Mode.IMAGE and not meta.get_images():
-            raise ValueError("Image paths must be specified in image mode. Use add_images() to add image paths.")
+        if mode == Mode.RAWTEXT and not meta.get_text_files():
+            raise ValueError("Text file paths must be specified in rawtext mode. Use add_text_files() to add text file paths.")
 
         if mode == Mode.DOCUMENT and not meta.get_documents():
             raise ValueError("Document paths must be specified in document mode. Use add_documents() to add document paths.")
@@ -239,8 +240,8 @@ class SwellDB:
                 meta=meta,
                 llm=self._llm,
             )
-        elif mode == Mode.IMAGE:
-            table: PhysicalTable = ImageTable(
+        elif mode == Mode.RAWTEXT:
+            table: PhysicalTable = RawTextTable(
                 logical_table=logical_table,
                 child_table=child_table,
                 meta=meta,

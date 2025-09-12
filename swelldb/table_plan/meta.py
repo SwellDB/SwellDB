@@ -16,7 +16,7 @@ class TableConfig:
     def __init__(self):
         self._links: List[str] = []
         self._images: List[str] = []
-        self._documents: List[str] = []
+        self._text_files: List[str] = []
         self._data: pa.Table = None
         self._base_columns: List[str] = None
         self._schema: Union[SwellDBSchema, str] = None
@@ -36,7 +36,11 @@ class TableConfig:
     def set_images(self, images: List[str]) -> "TableConfig":
         self._images = images
         return self
-    
+
+    def set_text_files(self, text_files: List[str]) -> "TableConfig":
+        self._text_files = text_files
+        return self
+
     def set_data(self, data: pa.Table) -> "TableConfig":
         self._data = data
         return self
@@ -98,6 +102,9 @@ class TableConfig:
     def get_documents(self) -> List[str]:
         return self._documents
 
+    def get_text_files(self) -> List[str]:
+        return self._text_files
+
     def get_data(self) -> pa.Table:
         return self._data
 
@@ -141,7 +148,7 @@ class TableConfig:
             self._images.append(image_path)
         return self
 
-    def add_document(self, document_path: str) -> "SwellDBMeta":
-        if document_path not in self._documents:
-            self._documents.append(document_path)
+    def add_text_file(self, text_file_path: str) -> "TableConfig":
+        if text_file_path not in self._text_files:
+            self._text_files.append(text_file_path)
         return self
