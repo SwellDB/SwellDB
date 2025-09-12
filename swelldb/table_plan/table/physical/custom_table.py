@@ -19,7 +19,6 @@ class CustomTable(PhysicalTable):
         child_table: PhysicalTable = None,
     ):
         super().__init__(
-            execution_engine=None,
             logical_table=None,
             child_table=child_table,
             layout=meta.get_layout(),

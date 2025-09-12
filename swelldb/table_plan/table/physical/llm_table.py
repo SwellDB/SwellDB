@@ -7,12 +7,9 @@ from typing import List, Dict
 import os
 import pyarrow as pa
 from jinja2 import Environment, FileSystemLoader, Template
-from overrides import overrides
 
-from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.llm.abstract_llm import AbstractLLM
 from swelldb.prompt.prompt_utils import create_table_prompt
-from swelldb.table_plan.layout import Layout
 from swelldb.table_plan.swelldb_schema import SwellDBSchema
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
@@ -24,19 +21,17 @@ import logging
 class LLMTable(PhysicalTable):
     def __init__(
         self,
-        execution_engine: ExecutionEngine,
         logical_table: LogicalTable,
         child_table: PhysicalTable,
         meta: SwellDBMeta,
         llm: AbstractLLM,
     ):
         super().__init__(
-            execution_engine=execution_engine,
+            llm=llm,
             logical_table=logical_table,
             child_table=child_table,
-            layout=meta.get_layout(),
             operator_name="llm_table",
-            llm=llm,
+            layout=meta.get_layout(),
             base_columns=meta.get_base_columns(),
             chunk_size=meta.get_chunk_size(),
         )

@@ -3,12 +3,13 @@
 # This file is part of SwellDB and is licensed under the MIT License.
 # See the LICENSE file in the project root for more information.
 
-from typing import Union, List
+from typing import Union, List, Optional
 import pyarrow as pa
 
 from swelldb.table_plan.swelldb_schema import SwellDBSchema
 from swelldb.table_plan.layout import Layout
 from swelldb.table_plan.mode import Mode
+from swelldb.engine.execution_engine import ExecutionEngine
 
 
 class SwellDBMeta:
@@ -26,6 +27,7 @@ class SwellDBMeta:
         self._chunk_size: int = 20
         self._layout: Layout = Layout.ROW()
         self._serper_api_key: str = None
+        self._execution_engine: Optional[ExecutionEngine] = None
 
     def set_links(self, links: List[str]) -> "SwellDBMeta":
         self._links = links
@@ -86,6 +88,10 @@ class SwellDBMeta:
         self._serper_api_key = serper_api_key
         return self
 
+    def set_execution_engine(self, execution_engine: ExecutionEngine) -> "SwellDBMeta":
+        self._execution_engine = execution_engine
+        return self
+
     # Getters
     def get_links(self) -> List[str]:
         return self._links
@@ -125,6 +131,9 @@ class SwellDBMeta:
 
     def get_serper_api_key(self) -> str:
         return self._serper_api_key
+
+    def get_execution_engine(self) -> Optional[ExecutionEngine]:
+        return self._execution_engine
 
     def add_link(self, link: str) -> "SwellDBMeta":
         if link not in self._links:

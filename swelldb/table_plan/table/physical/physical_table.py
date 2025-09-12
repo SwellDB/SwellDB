@@ -13,7 +13,6 @@ from typing import List, Dict
 import pyarrow as pa
 from pyarrow import Table
 
-from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.llm.abstract_llm import AbstractLLM
 from swelldb.table_plan.layout import Layout
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
@@ -24,7 +23,6 @@ import logging
 class PhysicalTable:
     def __init__(
         self,
-        execution_engine: ExecutionEngine,
         llm: AbstractLLM,
         logical_table: LogicalTable,
         child_table: "PhysicalTable",
@@ -40,7 +38,6 @@ class PhysicalTable:
         self._base_columns: str = base_columns
         self._operator_name: str = operator_name
         self._llm = llm
-        self._execution_engine = execution_engine
 
     def get_prompts(self, input_table: pa.Table) -> List[str]:
         raise NotImplementedError()

@@ -131,7 +131,7 @@ class SwellDB:
         self._serper_api_key = serper_api_key or self._config.get_serper_api_key()
         
         self._planner = TableGenPlanner(
-            llm=llm, execution_engine=execution_engine, serper_api_key=self._serper_api_key
+            llm=llm, serper_api_key=self._serper_api_key
         )
 
     def table_builder(self) -> TableBuilder:
@@ -175,6 +175,9 @@ class SwellDB:
         schema = meta.get_schema()
         data = meta.get_data()
 
+        # Set execution engine in meta for tables that need it
+        meta.set_execution_engine(self._execution_engine)
+
         if mode == Mode.PLANNER and not base_columns:
             raise ValueError(
                 "Base columns (base_columns) must be specified in planner mode."
@@ -212,6 +215,7 @@ class SwellDB:
             table: PhysicalTable = self._planner.create_plan(
                 logical_table=logical_table,
                 base_columns=base_columns,
+                meta=meta,
                 tables=tables
             )
         # Experimental
@@ -227,7 +231,6 @@ class SwellDB:
                 child_table=child_table,
                 meta=meta,
                 llm=self._llm,
-                execution_engine=self._execution_engine,
             )
         elif mode == Mode.SEARCH:
             table: PhysicalTable = SearchEngineTable(
@@ -235,7 +238,6 @@ class SwellDB:
                 child_table=child_table,
                 meta=meta,
                 llm=self._llm,
-                execution_engine=self._execution_engine,
             )
         elif mode == Mode.IMAGE:
             table: PhysicalTable = ImageTable(
@@ -243,7 +245,6 @@ class SwellDB:
                 child_table=child_table,
                 meta=meta,
                 llm=self._llm,
-                execution_engine=self._execution_engine,
             )
         elif mode == Mode.DOCUMENT:
             table: PhysicalTable = DocumentTable(
