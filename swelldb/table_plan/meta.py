@@ -15,6 +15,7 @@ class SwellDBMeta:
     def __init__(self):
         self._links: List[str] = []
         self._images: List[str] = []
+        self._documents: List[str] = []
         self._data: pa.Table = None
         self._base_columns: List[str] = None
         self._schema: Union[SwellDBSchema, str] = None
@@ -32,6 +33,10 @@ class SwellDBMeta:
 
     def set_images(self, images: List[str]) -> "SwellDBMeta":
         self._images = images
+        return self
+
+    def set_documents(self, documents: List[str]) -> "SwellDBMeta":
+        self._documents = documents
         return self
 
     def set_data(self, data: pa.Table) -> "SwellDBMeta":
@@ -88,6 +93,9 @@ class SwellDBMeta:
     def get_images(self) -> List[str]:
         return self._images
 
+    def get_documents(self) -> List[str]:
+        return self._documents
+
     def get_data(self) -> pa.Table:
         return self._data
 
@@ -126,4 +134,9 @@ class SwellDBMeta:
     def add_image(self, image_path: str) -> "SwellDBMeta":
         if image_path not in self._images:
             self._images.append(image_path)
+        return self
+
+    def add_document(self, document_path: str) -> "SwellDBMeta":
+        if document_path not in self._documents:
+            self._documents.append(document_path)
         return self

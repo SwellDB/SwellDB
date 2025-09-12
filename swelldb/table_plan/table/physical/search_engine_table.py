@@ -17,7 +17,7 @@ from swelldb.search.utils import crawl
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
 from swelldb.engine.execution_engine import ExecutionEngine
-from swelldb.util.config_parser import ConfigParser
+from swelldb.util.config import Config
 from swelldb.util.globals import Globals
 from swelldb.table_plan.meta import SwellDBMeta
 
@@ -57,16 +57,23 @@ class SearchEngineTable(PhysicalTable):
         )
         self._env = Environment(loader=FileSystemLoader(prompts_dir))
 
-        # Load config
+        # Load SERPER API key following the same pattern as OpenAI LLM
+        self._serper_api_key: str = ""
+        
         serper_api_key = meta.get_serper_api_key()
         if serper_api_key:
             self._serper_api_key = serper_api_key
-        elif os.getenv("SERPER_API_KEY"):
-            self._serper_api_key = os.getenv("SERPER_API_KEY")
+        elif os.getenv(Globals.GOOGLE_SERPER_API_KEY):
+            self._serper_api_key = os.getenv(Globals.GOOGLE_SERPER_API_KEY)
         else:
-            self._serper_api_key = ConfigParser.get_config(
-                Globals.GOOGLE_SERPER_API_KEY
-            )
+            # Try config file as fallback
+            config = Config()
+            self._serper_api_key = config.get_serper_api_key() or ""
+        
+        # Validate that we have an API key
+        if not self._serper_api_key:
+            logging.warning("No SERPER API key found. Search functionality may not work.")
+            logging.warning("Set SERPER_API_KEY environment variable or configure it in the config file.")
 
     def get_prompts(self, input_table: pa.Table) -> List[str]:
         logging.info("Searching on the internet")
@@ -94,6 +101,18 @@ class SearchEngineTable(PhysicalTable):
             search_queries: list[str] = self._llm.call(search_query_prompt).split("\n")
 
             logging.info(f"Search queries: {search_queries}")
+
+            # Check if we have a valid API key before creating the search wrapper
+            if not self._serper_api_key:
+                logging.error("Cannot perform search: SERPER API key is not configured")
+                # Return a fallback prompt without search results
+                prompt: str = create_table_prompt(
+                    table_description=self._logical_table.get_prompt(),
+                    table_schema=self._logical_table.get_schema().get_attribute_names(),
+                    data=f"Original data: {data}\nNote: Search functionality unavailable - API key not configured",
+                    layout=self._layout,
+                )
+                return [prompt]
 
             search: GoogleSerperAPIWrapper = GoogleSerperAPIWrapper(
                 serper_api_key=self._serper_api_key

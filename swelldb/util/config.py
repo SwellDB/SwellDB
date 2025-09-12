@@ -39,6 +39,10 @@ class Config:
         """Get OPENAI_API_KEY with fallback to config file"""
         return self.get("OPENAI_API_KEY")
     
+    def get_deepseek_api_key(self) -> Optional[str]:
+        """Get DEEPSEEK_API_KEY with fallback to config file"""
+        return self.get("DEEPSEEK_API_KEY")
+    
     def set(self, key: str, value: str):
         """Set a config value in the file"""
         self._config[key] = value
