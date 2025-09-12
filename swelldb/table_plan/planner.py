@@ -11,7 +11,7 @@ from typing import List, Set, Dict
 from swelldb.llm.abstract_llm import AbstractLLM
 from swelldb.table_plan import planner_prompts
 from swelldb.table_plan.swelldb_schema import SwellDBSchema
-from swelldb.table_plan.meta import SwellDBMeta
+from swelldb.table_plan.meta import TableConfig
 
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.dataset_table import DatasetTable
@@ -30,7 +30,7 @@ class TableGenPlanner:
     def create_plan_from_operators(
         self,
         logical_table: LogicalTable,
-        meta: SwellDBMeta,
+        meta: TableConfig,
         tables: Dict[str, str],
     ):
         # The initial column set, defined by the user
@@ -97,7 +97,7 @@ class TableGenPlanner:
         self,
         logical_table: LogicalTable,
         base_columns: List[str],
-        meta: SwellDBMeta,
+        meta: TableConfig,
         tables: Dict[str, str] = dict(),
     ) -> PhysicalTable:
 

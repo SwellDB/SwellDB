@@ -13,7 +13,7 @@ from swelldb.prompt.prompt_utils import create_table_prompt
 from swelldb.table_plan.swelldb_schema import SwellDBSchema
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
-from swelldb.table_plan.meta import SwellDBMeta
+from swelldb.table_plan.meta import TableConfig
 
 import logging
 
@@ -23,7 +23,7 @@ class LLMTable(PhysicalTable):
         self,
         logical_table: LogicalTable,
         child_table: PhysicalTable,
-        meta: SwellDBMeta,
+        meta: TableConfig,
         llm: AbstractLLM,
     ):
         super().__init__(

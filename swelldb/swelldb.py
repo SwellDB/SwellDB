@@ -20,40 +20,40 @@ from swelldb.table_plan.table.physical.image_table import ImageTable
 from swelldb.table_plan.table.physical.document_table import DocumentTable
 from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.llm.openai_llm import OpenAILLM
-from swelldb.table_plan.meta import SwellDBMeta
+from swelldb.table_plan.meta import TableConfig
 from swelldb.table_plan.mode import Mode
 from swelldb.util.config import Config
 
 class TableBuilder:
     def __init__(self, swelldb_ctx: "SwellDB"):
-        self._meta: SwellDBMeta = SwellDBMeta()
+        self._config: TableConfig = TableConfig()
         self._child_table = None
         self.swelldb_ctx = swelldb_ctx
         self.csv_files: List[(str, str)] = []
         self.parquet_files: List[(str, str)] = []
 
     def set_table_name(self, name: str) -> "TableBuilder":
-        self._meta.set_table_name(name)
+        self._config.set_table_name(name)
         return self
 
     def set_content(self, content: str) -> "TableBuilder":
-        self._meta.set_content(content)
+        self._config.set_content(content)
         return self
 
     def set_schema(self, schema: Union[SwellDBSchema, str]) -> "TableBuilder":
-        self._meta.set_schema(schema)
+        self._config.set_schema(schema)
         return self
 
     def set_base_columns(self, base_columns: List[str]) -> "TableBuilder":
-        self._meta.set_base_columns(base_columns)
+        self._config.set_base_columns(base_columns)
         return self
 
     def set_table_gen_mode(self, mode: "Mode") -> "TableBuilder":
-        self._meta.set_table_gen_mode(mode)
+        self._config.set_table_gen_mode(mode)
         return self
 
     def set_operators(self, operators: List[type]) -> "TableBuilder":
-        self._meta.set_operators(operators)
+        self._config.set_operators(operators)
         return self
 
     def set_data(self, data: pa.Table) -> "TableBuilder":
@@ -61,11 +61,11 @@ class TableBuilder:
             raise ValueError(
                 "Cannot set data when child table is already set. Please use either data or child_table."
             )
-        self._meta.set_data(data)
+        self._config.set_data(data)
         return self
 
     def set_child_table(self, table: PhysicalTable) -> "TableBuilder":
-        if self._meta.get_data():
+        if self._config.get_data():
             raise ValueError(
                 "Cannot set child table when data is already set. Please use either data or child_table."
             )
@@ -73,7 +73,7 @@ class TableBuilder:
         return self
 
     def set_chunk_size(self, chunk_size: int) -> "TableBuilder":
-        self._meta.set_chunk_size(chunk_size)
+        self._config.set_chunk_size(chunk_size)
         return self
 
     def add_csv_file(self, name: str, path: str) -> "TableBuilder":
@@ -85,7 +85,7 @@ class TableBuilder:
         return self
 
     def add_images(self, image_path: str):
-        self._meta.add_image(image_path)
+        self._config.add_image(image_path)
         return self
 
     def add_documents(self, document_path: str):
@@ -97,10 +97,10 @@ class TableBuilder:
         """
         Build the table using the provided parameters.
         """
-        if self._meta.get_content() is None:
+        if self._config.get_content() is None:
             raise ValueError("Content must be set.")
 
-        if self._meta.get_schema() is None:
+        if self._config.get_schema() is None:
             raise ValueError("Schema must be set.")
 
         for csv_file in self.csv_files:
@@ -110,7 +110,7 @@ class TableBuilder:
         tables = self.swelldb_ctx._execution_engine.get_tables()
 
         return self.swelldb_ctx._create_table(
-            meta=self._meta,
+            meta=self._config,
             child_table=self._child_table,
             tables=tables,
         )
@@ -142,7 +142,7 @@ class SwellDB:
 
     def _create_table(
         self,
-        meta: SwellDBMeta,
+        meta: TableConfig,
         child_table: PhysicalTable = None,
         tables: Dict[str, str] = None,
     ) -> PhysicalTable:
@@ -150,7 +150,7 @@ class SwellDB:
         Create a table using the provided metadata.
 
         Args:
-            meta (SwellDBMeta): The metadata for the table.
+            meta (TableConfig): The metadata for the table.
             child_table (PhysicalTable): Optional child table. Default is None.
             tables (Dict[str, str]): A dictionary of registered tables to be used for the table generation. Default is None.
 
@@ -160,10 +160,10 @@ class SwellDB:
         Examples:
             >>> from swelldb import SwellDB
             >>> from swelldb.llm.openai_llm import OpenAILLM
-            >>> from swelldb.table_plan.meta import SwellDBMeta
+            >>> from swelldb.table_plan.meta import TableConfig
 
             >>> swell_ctx = SwellDB(OpenAILLM())
-            >>> meta = SwellDBMeta()
+            >>> meta = TableConfig()
             >>> meta.set_table_name("country")
             >>> meta.set_content("a list of all US states")
             >>> meta.set_schema("country_name, president, year")

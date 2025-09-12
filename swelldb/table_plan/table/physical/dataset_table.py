@@ -14,7 +14,7 @@ from swelldb.llm.abstract_llm import AbstractLLM
 from swelldb.table_plan.layout import Layout
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
-from swelldb.table_plan.meta import SwellDBMeta
+from swelldb.table_plan.meta import TableConfig
 
 
 class DatasetTable(PhysicalTable):
@@ -23,7 +23,7 @@ class DatasetTable(PhysicalTable):
         logical_table: LogicalTable,
         child_table: PhysicalTable,
         llm: AbstractLLM,
-        meta: SwellDBMeta,
+        meta: TableConfig,
         layout: Layout = Layout.ROW(),
         query: str = None,
     ):

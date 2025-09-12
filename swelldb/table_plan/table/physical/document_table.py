@@ -13,7 +13,7 @@ from overrides import override, overrides
 import pyarrow as pa
 
 from swelldb.llm.abstract_llm import AbstractLLM
-from swelldb.table_plan.meta import SwellDBMeta
+from swelldb.table_plan.meta import TableConfig
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
 from swelldb.common.document_loader import DocumentLoader
@@ -26,7 +26,7 @@ class DocumentTable(PhysicalTable):
         self,
         logical_table: LogicalTable,
         child_table: PhysicalTable,
-        meta: SwellDBMeta,
+        meta: TableConfig,
         llm: AbstractLLM,
     ):
         super().__init__(

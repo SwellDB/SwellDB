@@ -18,7 +18,7 @@ from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
 from swelldb.util.config import Config
 from swelldb.util.globals import Globals
-from swelldb.table_plan.meta import SwellDBMeta
+from swelldb.table_plan.meta import TableConfig
 
 import logging
 
@@ -28,7 +28,7 @@ class SearchEngineTable(PhysicalTable):
         self,
         logical_table: LogicalTable,
         child_table: PhysicalTable,
-        meta: SwellDBMeta,
+        meta: TableConfig,
         llm: AbstractLLM,
     ):
         super().__init__(
