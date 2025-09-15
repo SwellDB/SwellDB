@@ -59,9 +59,15 @@ class LLMTable(PhysicalTable):
 
         schema: SwellDBSchema = self._logical_table.get_schema()
 
+        # Convert schema to dictionary format expected by create_table_prompt
+        schema_dict = {
+            attr.get_name(): f"{attr.get_description() or attr.get_name()} (type: {attr.get_data_type()})"
+            for attr in schema.get_attributes()
+        }
+
         prompt: str = create_table_prompt(
             table_description=self._logical_table.get_prompt(),
-            table_schema=schema.get_attribute_names(),
+            table_schema=schema_dict,
             data=data,
             layout=self._layout,
         )

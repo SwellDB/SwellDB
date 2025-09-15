@@ -3,7 +3,7 @@
 # This file is part of SwellDB and is licensed under the MIT License.
 # See the LICENSE file in the project root for more information.
 
-from typing import List
+from typing import List, Dict
 import os
 import pyarrow as pa
 from langchain_community.utilities import GoogleSerperAPIWrapper
@@ -71,6 +71,13 @@ class SearchEngineTable(PhysicalTable):
             logging.warning("No SERPER API key found. Search functionality may not work.")
             logging.warning("Set SERPER_API_KEY environment variable or configure it in the config file.")
 
+    def _get_schema_dict(self) -> Dict[str, str]:
+        """Convert schema to dictionary format expected by create_table_prompt."""
+        return {
+            attr.get_name(): f"{attr.get_description() or attr.get_name()} (type: {attr.get_data_type()})"
+            for attr in self._logical_table.get_schema().get_attributes()
+        }
+
     def get_prompts(self, input_table: pa.Table) -> List[str]:
         logging.info("Searching on the internet")
 
@@ -90,7 +97,7 @@ class SearchEngineTable(PhysicalTable):
             search_query_prompt = template.render(
                 prompt=self._logical_table.get_prompt(),
                 sql_query=self._logical_table._sql_query,
-                schema=self._logical_table.get_schema().get_attribute_names(),
+                schema=self._get_schema_dict(),
                 data=data,
             )
 
@@ -104,7 +111,7 @@ class SearchEngineTable(PhysicalTable):
                 # Return a fallback prompt without search results
                 prompt: str = create_table_prompt(
                     table_description=self._logical_table.get_prompt(),
-                    table_schema=self._logical_table.get_schema().get_attribute_names(),
+                    table_schema=self._get_schema_dict(),
                     data=f"Original data: {data}\nNote: Search functionality unavailable - API key not configured",
                     layout=self._layout,
                 )
@@ -142,7 +149,7 @@ class SearchEngineTable(PhysicalTable):
             for chunk in splitter.split(clean_results):
                 prompt: str = create_table_prompt(
                     table_description=self._logical_table.get_prompt(),
-                    table_schema=self._logical_table.get_schema().get_attribute_names(),
+                    table_schema=self._get_schema_dict(),
                     data=f"Original data: {data}\nSearch results: {chunk}",
                     layout=self._layout,
                 )
@@ -151,7 +158,7 @@ class SearchEngineTable(PhysicalTable):
         else:
             prompt: str = create_table_prompt(
                 table_description=self._logical_table.get_prompt(),
-                table_schema=self._logical_table.get_schema().get_attribute_names(),
+                table_schema=self._get_schema_dict(),
                 data=f"Original data: {data}\nSearch results: {search_results}",
                 layout=self._layout,
             )

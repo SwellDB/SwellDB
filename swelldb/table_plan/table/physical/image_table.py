@@ -104,9 +104,15 @@ class ImageTable(PhysicalTable):
             image_url = f"data:image/{image_format};base64,{image_base64}"
             
             # Create prompt using the existing prompt utility
+            # Convert schema to dictionary format expected by create_table_prompt
+            schema_dict = {
+                attr.get_name(): f"{attr.get_description() or attr.get_name()} (type: {attr.get_data_type()})"
+                for attr in self._logical_table.get_schema().get_attributes()
+            }
+            
             prompt = create_table_prompt(
                 table_description=self._logical_table.get_prompt(),
-                table_schema=self._logical_table.get_schema().get_attribute_names(),
+                table_schema=schema_dict,
                 data=f"Image file: {os.path.basename(image_path)}\nImage path: {image_path}\nImage data: {image_url}",
                 layout=self._layout,
             )
