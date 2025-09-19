@@ -15,15 +15,14 @@ from swelldb.table_plan.table.physical.custom_table import CustomTable
 from swelldb.table_plan.table.physical.llm_table import LLMTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
 from swelldb.table_plan.table.physical.search_engine_table import SearchEngineTable
-from swelldb.table_plan.table.physical.image_table import ImageTable
 from swelldb.table_plan.table.physical.document_table import DocumentTable
 from swelldb.table_plan.table.physical.rawtext_table import RawTextTable
 from swelldb.table_plan.table.physical.kaggle_dataset_table import KaggleDatasetTable
-from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.llm.openai_llm import OpenAILLM
 from swelldb.table_plan.meta import TableConfig
 from swelldb.table_plan.mode import Mode
 from swelldb.util.config import Config
+from swelldb.engine.datafusion_processor import DataFusionEngine
 
 class TableBuilder:
     def __init__(self, swelldb_ctx: "SwellDB"):
@@ -136,6 +135,9 @@ class SwellDB:
         self._planner = TableGenPlanner(
             llm=llm, serper_api_key=self._serper_api_key
         )
+        
+        # Initialize execution engine
+        self._execution_engine = DataFusionEngine()
 
     def table_builder(self) -> TableBuilder:
         """
@@ -254,8 +256,8 @@ class SwellDB:
                 logical_table=logical_table,
                 child_table=child_table,
                 meta=meta,
-                llm=self._llm,
-                execution_engine=self._execution_engine,
+                llm=self._llm
+            )
         elif mode == Mode.KAGGLE:
             table: PhysicalTable = KaggleDatasetTable(
                 logical_table=logical_table,
