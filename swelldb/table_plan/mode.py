@@ -14,4 +14,5 @@ class Mode(Enum):
     DATASET = "dataset"
     DOCUMENT = "document"
     IMAGE = "image"
-    RAWTEXT = "rawtext" 
+    RAWTEXT = "rawtext"
+    KAGGLE = "kaggle" 

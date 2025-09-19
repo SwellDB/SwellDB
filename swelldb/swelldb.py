@@ -7,7 +7,6 @@ from typing import Union, List, Dict
 
 import pyarrow as pa
 
-from swelldb.engine.datafusion_processor import DataFusionEngine
 from swelldb.table_plan.planner import TableGenPlanner
 from swelldb.table_plan.swelldb_schema import SwellDBSchema
 from swelldb.llm.abstract_llm import AbstractLLM
@@ -18,6 +17,9 @@ from swelldb.table_plan.table.physical.physical_table import PhysicalTable
 from swelldb.table_plan.table.physical.search_engine_table import SearchEngineTable
 from swelldb.table_plan.table.physical.image_table import ImageTable
 from swelldb.table_plan.table.physical.document_table import DocumentTable
+from swelldb.table_plan.table.physical.rawtext_table import RawTextTable
+from swelldb.table_plan.table.physical.kaggle_dataset_table import KaggleDatasetTable
+from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.llm.openai_llm import OpenAILLM
 from swelldb.table_plan.meta import TableConfig
 from swelldb.table_plan.mode import Mode
@@ -254,6 +256,11 @@ class SwellDB:
                 meta=meta,
                 llm=self._llm,
                 execution_engine=self._execution_engine,
+        elif mode == Mode.KAGGLE:
+            table: PhysicalTable = KaggleDatasetTable(
+                logical_table=logical_table,
+                meta=meta,
+                llm=self._llm,
             )
         else:
             raise ValueError(f"Unknown mode: {mode}")

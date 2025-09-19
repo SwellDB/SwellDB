@@ -7,6 +7,7 @@ from .custom_table import CustomTable
 from .dataset_table import DatasetTable
 from .document_table import DocumentTable
 from .image_table import ImageTable
+from .kaggle_dataset_table import KaggleDatasetTable
 from .llm_table import LLMTable
 from .physical_table import PhysicalTable
 from .rawtext_table import RawTextTable
@@ -17,6 +18,7 @@ __all__ = [
     "DatasetTable", 
     "DocumentTable",
     "ImageTable",
+    "KaggleDatasetTable",
     "LLMTable",
     "PhysicalTable",
     "RawTextTable",
