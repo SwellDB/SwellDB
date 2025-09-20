@@ -7,7 +7,6 @@ from typing import Union, List, Dict
 
 import pyarrow as pa
 
-from swelldb.engine.datafusion_processor import DataFusionEngine
 from swelldb.table_plan.planner import TableGenPlanner
 from swelldb.table_plan.swelldb_schema import SwellDBSchema
 from swelldb.llm.abstract_llm import AbstractLLM
@@ -16,44 +15,45 @@ from swelldb.table_plan.table.physical.custom_table import CustomTable
 from swelldb.table_plan.table.physical.llm_table import LLMTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
 from swelldb.table_plan.table.physical.search_engine_table import SearchEngineTable
-from swelldb.table_plan.table.physical.image_table import ImageTable
 from swelldb.table_plan.table.physical.document_table import DocumentTable
-from swelldb.engine.execution_engine import ExecutionEngine
+from swelldb.table_plan.table.physical.rawtext_table import RawTextTable
+from swelldb.table_plan.table.physical.kaggle_dataset_table import KaggleDatasetTable
 from swelldb.llm.openai_llm import OpenAILLM
-from swelldb.table_plan.meta import SwellDBMeta
+from swelldb.table_plan.meta import TableConfig
 from swelldb.table_plan.mode import Mode
 from swelldb.util.config import Config
+from swelldb.engine.datafusion_processor import DataFusionEngine
 
 class TableBuilder:
     def __init__(self, swelldb_ctx: "SwellDB"):
-        self._meta: SwellDBMeta = SwellDBMeta()
+        self._config: TableConfig = TableConfig()
         self._child_table = None
         self.swelldb_ctx = swelldb_ctx
         self.csv_files: List[(str, str)] = []
         self.parquet_files: List[(str, str)] = []
 
     def set_table_name(self, name: str) -> "TableBuilder":
-        self._meta.set_table_name(name)
+        self._config.set_table_name(name)
         return self
 
     def set_content(self, content: str) -> "TableBuilder":
-        self._meta.set_content(content)
+        self._config.set_content(content)
         return self
 
     def set_schema(self, schema: Union[SwellDBSchema, str]) -> "TableBuilder":
-        self._meta.set_schema(schema)
+        self._config.set_schema(schema)
         return self
 
     def set_base_columns(self, base_columns: List[str]) -> "TableBuilder":
-        self._meta.set_base_columns(base_columns)
+        self._config.set_base_columns(base_columns)
         return self
 
     def set_table_gen_mode(self, mode: "Mode") -> "TableBuilder":
-        self._meta.set_table_gen_mode(mode)
+        self._config.set_table_gen_mode(mode)
         return self
 
     def set_operators(self, operators: List[type]) -> "TableBuilder":
-        self._meta.set_operators(operators)
+        self._config.set_operators(operators)
         return self
 
     def set_data(self, data: pa.Table) -> "TableBuilder":
@@ -61,11 +61,11 @@ class TableBuilder:
             raise ValueError(
                 "Cannot set data when child table is already set. Please use either data or child_table."
             )
-        self._meta.set_data(data)
+        self._config.set_data(data)
         return self
 
     def set_child_table(self, table: PhysicalTable) -> "TableBuilder":
-        if self._meta.get_data():
+        if self._config.get_data():
             raise ValueError(
                 "Cannot set child table when data is already set. Please use either data or child_table."
             )
@@ -73,7 +73,7 @@ class TableBuilder:
         return self
 
     def set_chunk_size(self, chunk_size: int) -> "TableBuilder":
-        self._meta.set_chunk_size(chunk_size)
+        self._config.set_chunk_size(chunk_size)
         return self
 
     def add_csv_file(self, name: str, path: str) -> "TableBuilder":
@@ -85,22 +85,26 @@ class TableBuilder:
         return self
 
     def add_images(self, image_path: str):
-        self._meta.add_image(image_path)
+        self._config.add_image(image_path)
         return self
 
     def add_documents(self, document_path: str):
         """Add a document path to the metadata."""
         self._meta.add_document(document_path)
+
+    def add_text_files(self, text_file_path: str):
+        """Add a text file path to the metadata."""
+        self._config.add_text_file(text_file_path)
         return self
 
     def build(self):
         """
         Build the table using the provided parameters.
         """
-        if self._meta.get_content() is None:
+        if self._config.get_content() is None:
             raise ValueError("Content must be set.")
 
-        if self._meta.get_schema() is None:
+        if self._config.get_schema() is None:
             raise ValueError("Schema must be set.")
 
         for csv_file in self.csv_files:
@@ -110,7 +114,7 @@ class TableBuilder:
         tables = self.swelldb_ctx._execution_engine.get_tables()
 
         return self.swelldb_ctx._create_table(
-            meta=self._meta,
+            meta=self._config,
             child_table=self._child_table,
             tables=tables,
         )
@@ -120,10 +124,8 @@ class SwellDB:
     def __init__(
         self,
         llm: AbstractLLM,
-        execution_engine: ExecutionEngine = DataFusionEngine(),
         serper_api_key: str = None,
     ):
-        self._execution_engine = execution_engine
         self._llm = llm
         
         # Load config and use environment variables as override
@@ -131,8 +133,11 @@ class SwellDB:
         self._serper_api_key = serper_api_key or self._config.get_serper_api_key()
         
         self._planner = TableGenPlanner(
-            llm=llm, execution_engine=execution_engine, serper_api_key=self._serper_api_key
+            llm=llm, serper_api_key=self._serper_api_key
         )
+        
+        # Initialize execution engine
+        self._execution_engine = DataFusionEngine()
 
     def table_builder(self) -> TableBuilder:
         """
@@ -142,7 +147,7 @@ class SwellDB:
 
     def _create_table(
         self,
-        meta: SwellDBMeta,
+        meta: TableConfig,
         child_table: PhysicalTable = None,
         tables: Dict[str, str] = None,
     ) -> PhysicalTable:
@@ -150,7 +155,7 @@ class SwellDB:
         Create a table using the provided metadata.
 
         Args:
-            meta (SwellDBMeta): The metadata for the table.
+            meta (TableConfig): The metadata for the table.
             child_table (PhysicalTable): Optional child table. Default is None.
             tables (Dict[str, str]): A dictionary of registered tables to be used for the table generation. Default is None.
 
@@ -160,10 +165,10 @@ class SwellDB:
         Examples:
             >>> from swelldb import SwellDB
             >>> from swelldb.llm.openai_llm import OpenAILLM
-            >>> from swelldb.table_plan.meta import SwellDBMeta
+            >>> from swelldb.table_plan.meta import TableConfig
 
             >>> swell_ctx = SwellDB(OpenAILLM())
-            >>> meta = SwellDBMeta()
+            >>> meta = TableConfig()
             >>> meta.set_table_name("country")
             >>> meta.set_content("a list of all US states")
             >>> meta.set_schema("country_name, president, year")
@@ -175,6 +180,9 @@ class SwellDB:
         schema = meta.get_schema()
         data = meta.get_data()
 
+        # Set execution engine in meta for tables that need it
+        meta.set_execution_engine(self._execution_engine)
+
         if mode == Mode.PLANNER and not base_columns:
             raise ValueError(
                 "Base columns (base_columns) must be specified in planner mode."
@@ -183,8 +191,8 @@ class SwellDB:
         if mode == Mode.OPERATORS and not operators:
             raise ValueError("A list of operators should provider in operators mode.")
 
-        if mode == Mode.IMAGE and not meta.get_images():
-            raise ValueError("Image paths must be specified in image mode. Use add_images() to add image paths.")
+        if mode == Mode.RAWTEXT and not meta.get_text_files():
+            raise ValueError("Text file paths must be specified in rawtext mode. Use add_text_files() to add text file paths.")
 
         if mode == Mode.DOCUMENT and not meta.get_documents():
             raise ValueError("Document paths must be specified in document mode. Use add_documents() to add document paths.")
@@ -212,6 +220,7 @@ class SwellDB:
             table: PhysicalTable = self._planner.create_plan(
                 logical_table=logical_table,
                 base_columns=base_columns,
+                meta=meta,
                 tables=tables
             )
         # Experimental
@@ -227,7 +236,6 @@ class SwellDB:
                 child_table=child_table,
                 meta=meta,
                 llm=self._llm,
-                execution_engine=self._execution_engine,
             )
         elif mode == Mode.SEARCH:
             table: PhysicalTable = SearchEngineTable(
@@ -235,23 +243,26 @@ class SwellDB:
                 child_table=child_table,
                 meta=meta,
                 llm=self._llm,
-                execution_engine=self._execution_engine,
             )
-        elif mode == Mode.IMAGE:
-            table: PhysicalTable = ImageTable(
+        elif mode == Mode.RAWTEXT:
+            table: PhysicalTable = RawTextTable(
                 logical_table=logical_table,
                 child_table=child_table,
                 meta=meta,
                 llm=self._llm,
-                execution_engine=self._execution_engine,
             )
         elif mode == Mode.DOCUMENT:
             table: PhysicalTable = DocumentTable(
                 logical_table=logical_table,
                 child_table=child_table,
                 meta=meta,
+                llm=self._llm
+            )
+        elif mode == Mode.KAGGLE:
+            table: PhysicalTable = KaggleDatasetTable(
+                logical_table=logical_table,
+                meta=meta,
                 llm=self._llm,
-                execution_engine=self._execution_engine,
             )
         else:
             raise ValueError(f"Unknown mode: {mode}")

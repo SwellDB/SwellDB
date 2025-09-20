@@ -14,17 +14,16 @@ from swelldb.llm.abstract_llm import AbstractLLM
 from swelldb.table_plan.layout import Layout
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
-from swelldb.engine.execution_engine import ExecutionEngine
+from swelldb.table_plan.meta import TableConfig
 
 
 class DatasetTable(PhysicalTable):
     def __init__(
         self,
-        execution_engine: ExecutionEngine,
         logical_table: LogicalTable,
         child_table: PhysicalTable,
-        base_columns: List[str],
         llm: AbstractLLM,
+        meta: TableConfig,
         layout: Layout = Layout.ROW(),
         query: str = None,
     ):
@@ -34,16 +33,19 @@ class DatasetTable(PhysicalTable):
             layout=layout,
             operator_name="dataset_table",
             llm=llm,
-            base_columns=base_columns,
-            execution_engine=execution_engine,
+            base_columns=meta.get_base_columns(),
         )
 
-        self._execution_engine = execution_engine
+        self._meta = meta
         self._query = query
 
     @override
     def materialize(self, partitions=1) -> Table:
-        tables = self._execution_engine.get_tables()
+        execution_engine = self._meta.get_execution_engine()
+        if not execution_engine:
+            raise ValueError("Execution engine not available in meta")
+        
+        tables = execution_engine.get_tables()
 
         if self._query:
             sql_query = self._query
@@ -64,7 +66,7 @@ class DatasetTable(PhysicalTable):
                 .replace("```", "")
             )
 
-        return self._execution_engine.sql(sql_query).to_arrow_table()
+        return execution_engine.sql(sql_query).to_arrow_table()
 
     @overrides
     def get_columns_prompt(logical_table: LogicalTable, tables: Dict[str, str]) -> str:

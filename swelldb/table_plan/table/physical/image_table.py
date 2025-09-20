@@ -13,20 +13,18 @@ from overrides import override
 import pyarrow as pa
 
 from swelldb.llm.abstract_llm import AbstractLLM
-from swelldb.table_plan.meta import SwellDBMeta
+from swelldb.table_plan.meta import TableConfig
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
-from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.prompt.prompt_utils import create_table_prompt
 
 
 class ImageTable(PhysicalTable):
     def __init__(
         self,
-        execution_engine: ExecutionEngine,
         logical_table: LogicalTable,
         child_table: PhysicalTable,
-        meta: SwellDBMeta,
+        meta: TableConfig,
         llm: AbstractLLM,
     ):
         super().__init__(
@@ -36,11 +34,9 @@ class ImageTable(PhysicalTable):
             operator_name="image_table",
             llm=llm,
             base_columns=meta.get_base_columns(),
-            execution_engine=execution_engine,
             chunk_size=meta.get_chunk_size(),
         )
 
-        self._execution_engine = execution_engine
         self._meta = meta
 
     def get_prompts(self, input_table: pa.Table) -> List[str]:
@@ -108,9 +104,15 @@ class ImageTable(PhysicalTable):
             image_url = f"data:image/{image_format};base64,{image_base64}"
             
             # Create prompt using the existing prompt utility
+            # Convert schema to dictionary format expected by create_table_prompt
+            schema_dict = {
+                attr.get_name(): f"{attr.get_description() or attr.get_name()} (type: {attr.get_data_type()})"
+                for attr in self._logical_table.get_schema().get_attributes()
+            }
+            
             prompt = create_table_prompt(
                 table_description=self._logical_table.get_prompt(),
-                table_schema=self._logical_table.get_schema().get_attribute_names(),
+                table_schema=schema_dict,
                 data=f"Image file: {os.path.basename(image_path)}\nImage path: {image_path}\nImage data: {image_url}",
                 layout=self._layout,
             )

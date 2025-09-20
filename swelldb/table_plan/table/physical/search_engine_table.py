@@ -3,7 +3,7 @@
 # This file is part of SwellDB and is licensed under the MIT License.
 # See the LICENSE file in the project root for more information.
 
-from typing import List
+from typing import List, Dict
 import os
 import pyarrow as pa
 from langchain_community.utilities import GoogleSerperAPIWrapper
@@ -16,10 +16,9 @@ from swelldb.prompt.prompt_utils import create_table_prompt
 from swelldb.search.utils import crawl
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
-from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.util.config import Config
 from swelldb.util.globals import Globals
-from swelldb.table_plan.meta import SwellDBMeta
+from swelldb.table_plan.meta import TableConfig
 
 import logging
 
@@ -27,14 +26,12 @@ import logging
 class SearchEngineTable(PhysicalTable):
     def __init__(
         self,
-        execution_engine: ExecutionEngine,
         logical_table: LogicalTable,
         child_table: PhysicalTable,
-        meta: SwellDBMeta,
+        meta: TableConfig,
         llm: AbstractLLM,
     ):
         super().__init__(
-            execution_engine=execution_engine,
             llm=llm,
             logical_table=logical_table,
             child_table=child_table,
@@ -44,7 +41,6 @@ class SearchEngineTable(PhysicalTable):
             chunk_size=meta.get_chunk_size(),
         )
 
-        self._execution_engine = execution_engine
         self._meta = meta
         self._llm = llm
 
@@ -75,6 +71,13 @@ class SearchEngineTable(PhysicalTable):
             logging.warning("No SERPER API key found. Search functionality may not work.")
             logging.warning("Set SERPER_API_KEY environment variable or configure it in the config file.")
 
+    def _get_schema_dict(self) -> Dict[str, str]:
+        """Convert schema to dictionary format expected by create_table_prompt."""
+        return {
+            attr.get_name(): f"{attr.get_description() or attr.get_name()} (type: {attr.get_data_type()})"
+            for attr in self._logical_table.get_schema().get_attributes()
+        }
+
     def get_prompts(self, input_table: pa.Table) -> List[str]:
         logging.info("Searching on the internet")
 
@@ -94,7 +97,7 @@ class SearchEngineTable(PhysicalTable):
             search_query_prompt = template.render(
                 prompt=self._logical_table.get_prompt(),
                 sql_query=self._logical_table._sql_query,
-                schema=self._logical_table.get_schema().get_attribute_names(),
+                schema=self._get_schema_dict(),
                 data=data,
             )
 
@@ -108,7 +111,7 @@ class SearchEngineTable(PhysicalTable):
                 # Return a fallback prompt without search results
                 prompt: str = create_table_prompt(
                     table_description=self._logical_table.get_prompt(),
-                    table_schema=self._logical_table.get_schema().get_attribute_names(),
+                    table_schema=self._get_schema_dict(),
                     data=f"Original data: {data}\nNote: Search functionality unavailable - API key not configured",
                     layout=self._layout,
                 )
@@ -146,7 +149,7 @@ class SearchEngineTable(PhysicalTable):
             for chunk in splitter.split(clean_results):
                 prompt: str = create_table_prompt(
                     table_description=self._logical_table.get_prompt(),
-                    table_schema=self._logical_table.get_schema().get_attribute_names(),
+                    table_schema=self._get_schema_dict(),
                     data=f"Original data: {data}\nSearch results: {chunk}",
                     layout=self._layout,
                 )
@@ -155,7 +158,7 @@ class SearchEngineTable(PhysicalTable):
         else:
             prompt: str = create_table_prompt(
                 table_description=self._logical_table.get_prompt(),
-                table_schema=self._logical_table.get_schema().get_attribute_names(),
+                table_schema=self._get_schema_dict(),
                 data=f"Original data: {data}\nSearch results: {search_results}",
                 layout=self._layout,
             )

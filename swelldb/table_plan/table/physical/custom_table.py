@@ -8,18 +8,17 @@ from typing import List
 from pyarrow import Table
 
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
-from swelldb.table_plan.meta import SwellDBMeta
+from swelldb.table_plan.meta import TableConfig
 
 
 class CustomTable(PhysicalTable):
     def __init__(
         self,
         table_name: str,
-        meta: SwellDBMeta,
+        meta: TableConfig,
         child_table: PhysicalTable = None,
     ):
         super().__init__(
-            execution_engine=None,
             logical_table=None,
             child_table=child_table,
             layout=meta.get_layout(),

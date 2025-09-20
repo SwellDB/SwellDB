@@ -3,19 +3,20 @@
 # This file is part of SwellDB and is licensed under the MIT License.
 # See the LICENSE file in the project root for more information.
 
-from typing import Union, List
+from typing import Union, List, Optional
 import pyarrow as pa
 
 from swelldb.table_plan.swelldb_schema import SwellDBSchema
 from swelldb.table_plan.layout import Layout
 from swelldb.table_plan.mode import Mode
+from swelldb.engine.execution_engine import ExecutionEngine
 
 
-class SwellDBMeta:
+class TableConfig:
     def __init__(self):
         self._links: List[str] = []
         self._images: List[str] = []
-        self._documents: List[str] = []
+        self._text_files: List[str] = []
         self._data: pa.Table = None
         self._base_columns: List[str] = None
         self._schema: Union[SwellDBSchema, str] = None
@@ -26,44 +27,45 @@ class SwellDBMeta:
         self._chunk_size: int = 20
         self._layout: Layout = Layout.ROW()
         self._serper_api_key: str = None
+        self._execution_engine: Optional[ExecutionEngine] = None
 
-    def set_links(self, links: List[str]) -> "SwellDBMeta":
+    def set_links(self, links: List[str]) -> "TableConfig":
         self._links = links
         return self
 
-    def set_images(self, images: List[str]) -> "SwellDBMeta":
+    def set_images(self, images: List[str]) -> "TableConfig":
         self._images = images
         return self
 
-    def set_documents(self, documents: List[str]) -> "SwellDBMeta":
-        self._documents = documents
+    def set_text_files(self, text_files: List[str]) -> "TableConfig":
+        self._text_files = text_files
         return self
 
-    def set_data(self, data: pa.Table) -> "SwellDBMeta":
+    def set_data(self, data: pa.Table) -> "TableConfig":
         self._data = data
         return self
 
-    def set_base_columns(self, base_columns: List[str]) -> "SwellDBMeta":
+    def set_base_columns(self, base_columns: List[str]) -> "TableConfig":
         self._base_columns = base_columns
         return self
 
-    def set_schema(self, schema: Union[SwellDBSchema, str]) -> "SwellDBMeta":
+    def set_schema(self, schema: Union[SwellDBSchema, str]) -> "TableConfig":
         self._schema = schema
         return self
 
-    def set_content(self, content: str) -> "SwellDBMeta":
+    def set_content(self, content: str) -> "TableConfig":
         self._content = content
         return self
 
-    def set_table_name(self, name: str) -> "SwellDBMeta":
+    def set_table_name(self, name: str) -> "TableConfig":
         self._table_name = name
         return self
 
-    def set_table_gen_mode(self, mode: Mode) -> "SwellDBMeta":
+    def set_table_gen_mode(self, mode: Mode) -> "TableConfig":
         self._table_gen_mode = mode
         return self
 
-    def set_operators(self, operators: List[type]) -> "SwellDBMeta":
+    def set_operators(self, operators: List[type]) -> "TableConfig":
         op_set = set()
         for operator in operators:
             if operator in op_set:
@@ -74,16 +76,20 @@ class SwellDBMeta:
         self._operators = operators
         return self
 
-    def set_chunk_size(self, chunk_size: int) -> "SwellDBMeta":
+    def set_chunk_size(self, chunk_size: int) -> "TableConfig":
         self._chunk_size = chunk_size
         return self
 
-    def set_layout(self, layout: Layout) -> "SwellDBMeta":
+    def set_layout(self, layout: Layout) -> "TableConfig":
         self._layout = layout
         return self
 
-    def set_serper_api_key(self, serper_api_key: str) -> "SwellDBMeta":
+    def set_serper_api_key(self, serper_api_key: str) -> "TableConfig":
         self._serper_api_key = serper_api_key
+        return self
+
+    def set_execution_engine(self, execution_engine: ExecutionEngine) -> "TableConfig":
+        self._execution_engine = execution_engine
         return self
 
     # Getters
@@ -95,6 +101,9 @@ class SwellDBMeta:
 
     def get_documents(self) -> List[str]:
         return self._documents
+
+    def get_text_files(self) -> List[str]:
+        return self._text_files
 
     def get_data(self) -> pa.Table:
         return self._data
@@ -126,17 +135,20 @@ class SwellDBMeta:
     def get_serper_api_key(self) -> str:
         return self._serper_api_key
 
-    def add_link(self, link: str) -> "SwellDBMeta":
+    def get_execution_engine(self) -> Optional[ExecutionEngine]:
+        return self._execution_engine
+
+    def add_link(self, link: str) -> "TableConfig":
         if link not in self._links:
             self._links.append(link)
         return self
 
-    def add_image(self, image_path: str) -> "SwellDBMeta":
+    def add_image(self, image_path: str) -> "TableConfig":
         if image_path not in self._images:
             self._images.append(image_path)
         return self
 
-    def add_document(self, document_path: str) -> "SwellDBMeta":
-        if document_path not in self._documents:
-            self._documents.append(document_path)
+    def add_text_file(self, text_file_path: str) -> "TableConfig":
+        if text_file_path not in self._text_files:
+            self._text_files.append(text_file_path)
         return self

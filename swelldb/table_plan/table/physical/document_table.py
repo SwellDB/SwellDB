@@ -13,10 +13,9 @@ from overrides import override, overrides
 import pyarrow as pa
 
 from swelldb.llm.abstract_llm import AbstractLLM
-from swelldb.table_plan.meta import SwellDBMeta
+from swelldb.table_plan.meta import TableConfig
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.physical_table import PhysicalTable
-from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.common.document_loader import DocumentLoader
 from swelldb.common.text import Splitter
 from swelldb.prompt.prompt_utils import create_table_prompt
@@ -25,10 +24,9 @@ from swelldb.prompt.prompt_utils import create_table_prompt
 class DocumentTable(PhysicalTable):
     def __init__(
         self,
-        execution_engine: ExecutionEngine,
         logical_table: LogicalTable,
         child_table: PhysicalTable,
-        meta: SwellDBMeta,
+        meta: TableConfig,
         llm: AbstractLLM,
     ):
         super().__init__(
@@ -38,11 +36,9 @@ class DocumentTable(PhysicalTable):
             operator_name="document_table",
             llm=llm,
             base_columns=meta.get_base_columns(),
-            execution_engine=execution_engine,
             chunk_size=meta.get_chunk_size(),
         )
 
-        self._execution_engine = execution_engine
         self._meta = meta
         self._document_loader = DocumentLoader()
         self._splitter = Splitter()
@@ -91,9 +87,15 @@ class DocumentTable(PhysicalTable):
         
         prompts = []
         for chunk in text_chunks:
+            # Convert schema to dictionary format expected by create_table_prompt
+            schema_dict = {
+                attr.get_name(): f"{attr.get_description() or attr.get_name()} (type: {attr.get_data_type()})"
+                for attr in self._logical_table.get_schema().get_attributes()
+            }
+            
             prompt = create_table_prompt(
                 table_description=self._logical_table.get_prompt(),
-                table_schema=self._logical_table.get_schema().get_attribute_names(),
+                table_schema=schema_dict,
                 data=f"Document content:\n{chunk}",
                 layout=self._layout,
             )

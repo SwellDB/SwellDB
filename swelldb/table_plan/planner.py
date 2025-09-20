@@ -8,11 +8,10 @@ import logging
 
 from typing import List, Set, Dict
 
-from swelldb.engine.execution_engine import ExecutionEngine
 from swelldb.llm.abstract_llm import AbstractLLM
 from swelldb.table_plan import planner_prompts
 from swelldb.table_plan.swelldb_schema import SwellDBSchema
-from swelldb.table_plan.meta import SwellDBMeta
+from swelldb.table_plan.meta import TableConfig
 
 from swelldb.table_plan.table.logical.logical_table import LogicalTable
 from swelldb.table_plan.table.physical.dataset_table import DatasetTable
@@ -23,16 +22,15 @@ from swelldb.table_plan.table.physical.search_engine_table import SearchEngineTa
 
 class TableGenPlanner:
     def __init__(
-        self, llm: AbstractLLM, execution_engine: ExecutionEngine, serper_api_key: str
+        self, llm: AbstractLLM, serper_api_key: str
     ):
         self._llm: AbstractLLM = llm
-        self._execution_engine: ExecutionEngine = execution_engine
         self._serper_api_key: str = serper_api_key
 
     def create_plan_from_operators(
         self,
         logical_table: LogicalTable,
-        meta: SwellDBMeta,
+        meta: TableConfig,
         tables: Dict[str, str],
     ):
         # The initial column set, defined by the user
@@ -88,7 +86,7 @@ class TableGenPlanner:
 
             # Replace the root table with the new operator — Add the previous root as its child.
             root = operator_cls(
-                self._execution_engine, new_logical_table, root, meta, self._llm
+                logical_table=new_logical_table, child_table=root, meta=meta, llm=self._llm
             )
 
             remaining_column_set.difference_update(operator_columns)
@@ -99,6 +97,7 @@ class TableGenPlanner:
         self,
         logical_table: LogicalTable,
         base_columns: List[str],
+        meta: TableConfig,
         tables: Dict[str, str] = dict(),
     ) -> PhysicalTable:
 
@@ -144,8 +143,8 @@ class TableGenPlanner:
                 llm=self._llm,
                 base_columns=base_columns,
                 child_table=None,
+                meta=meta,
                 query=local_ds_sql_query,
-                execution_engine=self._execution_engine,
             )
 
             # Remove the columns that can be generated with the provided datasets from the remaining column set
@@ -198,14 +197,13 @@ class TableGenPlanner:
 
                 root_table = LLMTable(
                     llm=self._llm,
-                    execution_engine=self._execution_engine,
                     logical_table=llm_logical_table,
                     child_table=root_table,
-                    base_column=base_column,
+                    meta=meta,
                 )
 
         if remaining_column_set:
-            remaining_column_set.add(base_column)
+            remaining_column_set.add(base_columns[0] if base_columns else "")
 
             search_table_schema = SwellDBSchema(
                 attributes=[
@@ -224,9 +222,7 @@ class TableGenPlanner:
                 llm=self._llm,
                 logical_table=search_logical_table,
                 child_table=root_table,
-                base_column=base_column,
-                execution_engine=self._execution_engine,
-                serper_api_key=self._serper_api_key,
+                meta=meta,
             )
 
         return root_table
